@@ -34,36 +34,35 @@ local function removePaint(player, item)
     ISTimedActionQueue.add(TSPaintRemoveAction:new(player, item, TSPS.findSolvent(inv), TSPS.findCloth(inv)))
 end
 
-local function addPaintOption(player, context, item, paints)
-    local hasBrush = TSPS.hasBrush(player:getInventory())
-    local label = getText("ContextMenu_TS_PaintItem")
+local function addApplyOption(player, paintMenu, item, paints, hasBrush)
+    local label = getText("ContextMenu_TS_Apply")
     if not hasBrush then
-        label = getText("ContextMenu_TS_PaintItem_NeedsBrush")
+        label = getText("ContextMenu_TS_Apply_NeedsBrush")
     elseif #paints == 0 then
-        label = getText("ContextMenu_TS_PaintItem_NoPaint")
+        label = getText("ContextMenu_TS_Apply_NoPaint")
     end
 
-    local option = context:addOption(label, nil, nil)
+    local option = paintMenu:addOption(label, nil, nil)
     if not hasBrush or #paints == 0 then
         option.notAvailable = true
         return
     end
 
-    local subMenu = ISContextMenu:getNew(context)
-    context:addSubMenu(option, subMenu)
+    local applyMenu = ISContextMenu:getNew(paintMenu)
+    paintMenu:addSubMenu(option, applyMenu)
 
     for _, paint in ipairs(paints) do
-        local row = subMenu:addColorBoxOption(getText(paint.entry.text) .. " (" .. paint.uses .. ")", player, paintSingle, item, paint.entry)
+        local row = applyMenu:addColorBoxOption(getText(paint.entry.text) .. " (" .. paint.uses .. ")", player, paintSingle, item, paint.entry)
         row.color.r = paint.entry.color[1]
         row.color.g = paint.entry.color[2]
         row.color.b = paint.entry.color[3]
     end
 
-    local mixOption = subMenu:addOption(getText("ContextMenu_TS_CustomMix"), player, openMixer, item)
+    local mixOption = applyMenu:addOption(getText("ContextMenu_TS_CustomMix"), player, openMixer, item)
     if #paints < 2 then mixOption.notAvailable = true end
 end
 
-local function addRemoveOption(player, context, item)
+local function addRemoveOption(player, paintMenu, item)
     if not TSPS.isPainted(item) then return end
 
     local inv = player:getInventory()
@@ -78,7 +77,7 @@ local function addRemoveOption(player, context, item)
         label = getText("ContextMenu_TS_RemovePaint_NeedsCloth")
     end
 
-    local option = context:addOption(label, player, removePaint, item)
+    local option = paintMenu:addOption(label, player, removePaint, item)
     option.notAvailable = not (solvent and cloth)
 end
 
@@ -89,9 +88,13 @@ local function onFillInventoryContextMenu(playerNum, context, items)
     local item = findPaintable(player, items)
     if not item then return end
 
-    local paints = TSPS.getAvailablePaints(player:getInventory())
-    addPaintOption(player, context, item, paints)
-    addRemoveOption(player, context, item)
+    local inv = player:getInventory()
+    local paintOption = context:addOption(getText("ContextMenu_TS_PaintMenu"), nil, nil)
+    local paintMenu = ISContextMenu:getNew(context)
+    context:addSubMenu(paintOption, paintMenu)
+
+    addApplyOption(player, paintMenu, item, TSPS.getAvailablePaints(inv), TSPS.hasBrush(inv))
+    addRemoveOption(player, paintMenu, item)
 end
 
 Events.OnPreFillInventoryObjectContextMenu.Add(onFillInventoryContextMenu)
