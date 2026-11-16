@@ -185,11 +185,9 @@ function TSPS.applyPaint(item, r, g, b, mix, index, player)
     modelIdx = item:getModelIndex()
     if modelIdx ~= index then item:setModelIndex(index) end
 
-    item:setColor(Color.new(r, g, b, 1))
     item:setColorRed(r)
     item:setColorGreen(g)
     item:setColorBlue(b)
-    item:setCustomColor(true)
     item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = modelIdx }
     refreshItem(item, player)
 end
@@ -201,11 +199,9 @@ function TSPS.clearPaint(item, player)
     modelIdx = item:getModelIndex()
     if modelIdx ~= index then item:setModelIndex(index) end
 
-    item:setColor(Color.new(1, 1, 1, 1))
     item:setColorRed(1)
     item:setColorGreen(1)
     item:setColorBlue(1)
-    item:setCustomColor(false)
     item:getModData().TS_Paint = nil
     refreshItem(item, player)
 end
