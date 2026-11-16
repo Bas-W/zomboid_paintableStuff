@@ -1,0 +1,12 @@
+{
+    "ContextMenu_TS_PaintItem": "Paint item",
+    "ContextMenu_TS_PaintItem_NeedsBrush": "Paint item (needs paintbrush)",
+    "ContextMenu_TS_PaintItem_NoPaint": "Paint item (no paint)",
+    "ContextMenu_TS_RemovePaint": "Remove paint",
+    "ContextMenu_TS_RemovePaint_NeedsPetrol": "Remove paint (needs petrol)",
+    "ContextMenu_TS_RemovePaint_NeedsCloth": "Remove paint (needs cloth)",
+    "ContextMenu_TS_RemovePaint_NeedsBoth": "Remove paint (needs petrol and cloth)",
+    "ContextMenu_TS_CustomMix": "Custom mix...",
+    "ContextMenu_TS_Painting": "Painting",
+    "ContextMenu_TS_RemovingPaint": "Removing paint"
+}

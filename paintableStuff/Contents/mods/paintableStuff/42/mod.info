@@ -1,5 +1,8 @@
 name=Paintable Stuff
-authors=TeaStain
-id=PaintableStuff
-description=Allows stuff to be repainted.
-modversion=0.1.0
+modversion=0.2.0
+author=TeaStain
+id=tsPaintableStuff
+description=Framework which adds functionality to make items paintable.
+description=
+description=This mod does nothing on it's own.
+category=features

@@ -1,5 +1,7 @@
-version=0.1.0
 title=Paintable Stuff
-description=Allows stuff to be repainted.
+version=0.2.0
+description=Framework which adds functionality to make items paintable.
+description=
+description=This mod does nothing on it's own.
 tags=
 visibility=public
