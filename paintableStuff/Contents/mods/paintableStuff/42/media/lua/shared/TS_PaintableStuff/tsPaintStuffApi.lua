@@ -188,6 +188,8 @@ function TSPS.applyPaint(item, r, g, b, mix, index, player)
     item:setColorRed(r)
     item:setColorGreen(g)
     item:setColorBlue(b)
+    item:setColor(Color.new(1, 1, 1, 1))
+    item:setCustomColor(false)
     item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = modelIdx }
     refreshItem(item, player)
 end
@@ -202,8 +204,21 @@ function TSPS.clearPaint(item, player)
     item:setColorRed(1)
     item:setColorGreen(1)
     item:setColorBlue(1)
+    item:setColor(Color.new(1, 1, 1, 1))
+    item:setCustomColor(false)
     item:getModData().TS_Paint = nil
     refreshItem(item, player)
+end
+
+-- InventoryItem.load() copies colorRed/Green/Blue into col,
+-- this causes the icon to be tinted after reload.
+-- It should be reset when the icon is drawn.
+function TSPS.ensureIconUntinted(item)
+    if not item or not item:getModData().TS_Paint then return end
+    if item:getR() ~= 1 or item:getG() ~= 1 or item:getB() ~= 1 then
+        item:setColor(Color.new(1, 1, 1, 1))
+        item:setCustomColor(false)
+    end
 end
 
 function TSPS.isPainted(item)
