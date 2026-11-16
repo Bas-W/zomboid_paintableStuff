@@ -1,0 +1,5 @@
+version=0.1.0
+title=Paintable Stuff
+description=Allows stuff to be repainted.
+tags=
+visibility=public
