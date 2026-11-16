@@ -182,18 +182,25 @@ end
 function TSPS.applyPaint(item, r, g, b, mix, index, player)
     local registration = TSPS.Paintables[item:getFullType()]
     index = safeIndex(item, index or (registration and registration.index) or 0)
-    if item:getModelIndex() ~= index then item:setModelIndex(index) end
+    modelIdx = item:getModelIndex()
+    if modelIdx ~= index then item:setModelIndex(index) end
 
     item:setColor(Color.new(r, g, b, 1))
     item:setColorRed(r)
     item:setColorGreen(g)
     item:setColorBlue(b)
     item:setCustomColor(true)
-    item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1 }
+    item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = modelIdx }
     refreshItem(item, player)
 end
 
 function TSPS.clearPaint(item, player)
+    -- Reset to original modelindex
+    index = item:getModData().TS_Paint.idx
+    if index == nil then index = 0 end
+    modelIdx = item:getModelIndex()
+    if modelIdx ~= index then item:setModelIndex(index) end
+
     item:setColor(Color.new(1, 1, 1, 1))
     item:setColorRed(1)
     item:setColorGreen(1)
