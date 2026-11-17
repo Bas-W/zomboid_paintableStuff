@@ -16,9 +16,51 @@ TS_PaintStuff = TS_PaintStuff or {}
 local TSPS = TS_PaintStuff
 
 TSPS.API_VERSION = 1
+TSPS.MODULE = "TS_PaintableStuff"
 TSPS.Paintables = TSPS.Paintables or {}
 TSPS.MAX_MIX_PARTS = 10
 TSPS.PETROL_PER_REMOVAL = 0.5
+
+TSPS.DEBUG = false
+
+function TSPS.side()
+    if isServer() then return "SERVER" end
+    if isClient() then return "CLIENT" end
+    return "SP"
+end
+
+function TSPS.tableToString(tbl)
+    if type(tbl) ~= "table" then return tostring(tbl) end
+    local parts = {}
+    for k, v in pairs(tbl) do
+        parts[#parts + 1] = tostring(k) .. "=" .. tostring(v)
+    end
+    return "{" .. table.concat(parts, ", ") .. "}"
+end
+
+function TSPS.log(...)
+    if not TSPS.DEBUG then return end
+    local parts = {}
+    for i = 1, select("#", ...) do
+        parts[#parts + 1] = tostring(select(i, ...))
+    end
+    print("[TSPS] " .. TSPS.side() .. " | " .. table.concat(parts, " "))
+end
+
+function TSPS.logItem(tag, item)
+    if not TSPS.DEBUG then return end
+    if not item then
+        TSPS.log(tag, "item=nil")
+        return
+    end
+    TSPS.log(tag,
+        "type", item:getFullType(),
+        "id", item:getID(),
+        "painted", tostring(TSPS.isPainted(item)),
+        "modelRGB", item:getColorRed(), item:getColorGreen(), item:getColorBlue(),
+        "col", item:getR(), item:getG(), item:getB(),
+        "customColor", tostring(item:isCustomColor()))
+end
 
 function TSPS.registerPaintable(fullType, opts)
     TSPS.Paintables[fullType] = { index = math.max(0, math.floor(tonumber(opts and opts.index) or 0)) }
@@ -106,6 +148,7 @@ function TSPS.consumePaint(inv, mix)
         if part.parts > 0 then
             local tin = TSPS.findUsableTin(inv, part.paint)
             if not tin then return false end
+            TSPS.log("consumePaint", part.paint, "tinId", tin:getID(), "usesBefore", tin:getCurrentUses())
             tin:UseAndSync()
         end
     end
@@ -159,7 +202,8 @@ end
 
 local function refreshItem(item, player)
     if item:getContainer() then item:getContainer():setDrawDirty(true) end
-    if player and player:isLocalPlayer() and player:isEquipped(item) then
+    if player and player:isLocalPlayer()
+        and (player:isEquipped(item) or player:isAttachedItem(item)) then
         player:resetModelNextFrame()
     end
 end
@@ -177,8 +221,18 @@ end
 
 function TSPS.applyPaint(item, r, g, b, mix, index, player)
     local registration = TSPS.Paintables[item:getFullType()]
+    local previous = item:getModData().TS_Paint
     index = safeIndex(item, index or (registration and registration.index) or 0)
-    modelIdx = item:getModelIndex()
+    local modelIdx = item:getModelIndex()
+    local originalIdx = previous and previous.idx or modelIdx
+    TSPS.log("applyPaint",
+        "id", item:getID(),
+        "rgb", r, g, b,
+        "mix", TSPS.tableToString(mix),
+        "index", index,
+        "modelIndex", modelIdx,
+        "originalIdx", originalIdx,
+        "localPlayer", tostring(player ~= nil and player:isLocalPlayer()))
     if modelIdx ~= index then item:setModelIndex(index) end
 
     item:setColorRed(r)
@@ -186,15 +240,18 @@ function TSPS.applyPaint(item, r, g, b, mix, index, player)
     item:setColorBlue(b)
     item:setColor(Color.new(1, 1, 1, 1))
     item:setCustomColor(false)
-    item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = modelIdx }
+    item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = originalIdx }
     refreshItem(item, player)
+    TSPS.logItem("applyPaint done", item)
 end
 
 function TSPS.clearPaint(item, player)
+    TSPS.log("clearPaint", "id", item:getID(), "localPlayer", tostring(player ~= nil and player:isLocalPlayer()))
+    TSPS.logItem("clearPaint before", item)
     -- Reset to original modelindex
-    index = item:getModData().TS_Paint.idx
+    local index = item:getModData().TS_Paint.idx
     if index == nil then index = 0 end
-    modelIdx = item:getModelIndex()
+    local modelIdx = item:getModelIndex()
     if modelIdx ~= index then item:setModelIndex(index) end
 
     item:setColorRed(1)
@@ -204,6 +261,7 @@ function TSPS.clearPaint(item, player)
     item:setCustomColor(false)
     item:getModData().TS_Paint = nil
     refreshItem(item, player)
+    TSPS.logItem("clearPaint done", item)
 end
 
 -- InventoryItem.load() copies colorRed/Green/Blue into col,
@@ -264,8 +322,13 @@ end
 
 local function restorePaint(player, item)
     local paint = item and item:getModData().TS_Paint
+    TSPS.log("restorePaint (OnEquip)", "hasPaint", tostring(paint ~= nil))
+    TSPS.logItem("restorePaint (OnEquip) item", item)
     if paint then
         TSPS.applyPaint(item, paint.r, paint.g, paint.b, paint.mix, nil, player)
+        if isServer() then
+            item:syncItemFields()
+        end
     end
 end
 
