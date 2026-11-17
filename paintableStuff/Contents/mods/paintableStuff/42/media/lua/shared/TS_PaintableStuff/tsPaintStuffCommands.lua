@@ -13,6 +13,10 @@ local function respond(player, command, args)
     sendServerCommand(player, MODULE, command, args)
 end
 
+local function clamp01(value)
+    return math.max(0, math.min(1, tonumber(value) or 1))
+end
+
 local function onPaintRequest(player, args)
     local inv = player:getInventory()
     local item = TSPS.findItem(player, args.itemId)
@@ -21,12 +25,12 @@ local function onPaintRequest(player, args)
         return respond(player, "failed", { playerNum = args.playerNum })
     end
 
-    local r, g, b = TSPS.mixColor(mix)
+    local r, g, b = clamp01(args.r), clamp01(args.g), clamp01(args.b)
     TSPS.applyPaint(item, r, g, b, mix, nil, player)
     TSPS.consumePaint(inv, mix)
     item:syncItemFields()
     if isEquipped(player, item) then sendEquip(player) end
-    respond(player, "painted", { playerNum = args.playerNum, itemId = item:getID(), mix = TSPS.mixToString(mix) })
+    respond(player, "painted", { playerNum = args.playerNum, itemId = item:getID(), r = r, g = g, b = b, mix = TSPS.mixToString(mix) })
 end
 
 local function onUnpaintRequest(player, args)
@@ -72,7 +76,7 @@ if isClient() then
 
         if command == "painted" then
             local mix = TSPS.sanitizeMix(TSPS.mixFromString(args.mix))
-            local r, g, b = TSPS.mixColor(mix)
+            local r, g, b = clamp01(args.r), clamp01(args.g), clamp01(args.b)
             TSPS.applyPaint(item, r, g, b, mix, nil, player)
         elseif command == "unpainted" then
             TSPS.clearPaint(item, player)

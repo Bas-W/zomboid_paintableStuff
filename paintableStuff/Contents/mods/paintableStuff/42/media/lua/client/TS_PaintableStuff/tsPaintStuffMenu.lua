@@ -19,7 +19,9 @@ local function findPaintable(player, items)
 end
 
 local function paintSingle(player, item, entry)
-    ISTimedActionQueue.add(TSPaintItemAction:new(player, item, { { paint = entry.paint, parts = 1 } }))
+    local mix = { { paint = entry.paint, parts = 1 } }
+    local r, g, b = TSPS.mixColor(mix)
+    ISTimedActionQueue.add(TSPaintItemAction:new(player, item, mix, r, g, b))
 end
 
 local function openMixer(player, item)

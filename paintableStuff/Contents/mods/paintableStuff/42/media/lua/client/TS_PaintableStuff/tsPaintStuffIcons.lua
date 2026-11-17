@@ -1,3 +1,7 @@
+-- TeaStain 16/11/2026
+--
+-- Prevent item icons from being tinted on reload.
+
 require "ISUI/ISInventoryItem"
 require "TS_PaintableStuff/tsPaintStuffApi"
 

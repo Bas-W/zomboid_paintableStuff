@@ -44,11 +44,13 @@ function TSPaintItemAction:complete()
         sendClientCommand(self.character, MODULE, "paint", {
             playerNum = self.character:getPlayerNum(),
             itemId = self.item:getID(),
+            r = self.r,
+            g = self.g,
+            b = self.b,
             mix = TSPS.mixToString(self.mix),
         })
     else
-        local r, g, b = TSPS.mixColor(self.mix)
-        TSPS.applyPaint(self.item, r, g, b, self.mix, nil, self.character)
+        TSPS.applyPaint(self.item, self.r, self.g, self.b, self.mix, nil, self.character)
         TSPS.consumePaint(self.character:getInventory(), self.mix)
     end
     return true
@@ -59,10 +61,13 @@ function TSPaintItemAction:getDuration()
     return 60
 end
 
-function TSPaintItemAction:new(character, item, mix)
+function TSPaintItemAction:new(character, item, mix, r, g, b)
     local o = ISBaseTimedAction.new(self, character)
     o.item = item
     o.mix = mix
+    o.r = r
+    o.g = g
+    o.b = b
     o.maxTime = o:getDuration()
     o.stopOnWalk = true
     o.stopOnRun = true

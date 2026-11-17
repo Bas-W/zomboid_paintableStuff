@@ -2,6 +2,7 @@
 
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
+require "RadioCom/ISUIRadio/ISSliderPanel"
 require "TimedActions/ISTimedActionQueue"
 require "TS_PaintableStuff/tsPaintStuffApi"
 require "TS_PaintableStuff/tsPaintStuffActions"
@@ -10,21 +11,34 @@ local TSPS = TS_PaintStuff
 
 TSPaintMixPanel = ISPanel:derive("TSPaintMixPanel")
 
+local PANEL_W = 450
 local PAD = 10
+local MARGIN = 8
 local ROW_H = 24
 local BTN_H = 22
 local BTN_W = 90
+local BTN_SMALL_W = 22
 local SWATCH = 16
-local PREVIEW = 44
-local MINUS_X = 266
-local COUNT_X = 292
-local PLUS_X = 314
+local PREVIEW_SIZE = 44
+local SLIDER_H = 18
+local SLIDER_GAP = 6
+local SLIDER_W = 170
+local PLUS_X = PANEL_W - PAD - BTN_SMALL_W
+local COUNT_X = PLUS_X - PAD - BTN_SMALL_W / 2
+local MINUS_X = COUNT_X - PAD - BTN_SMALL_W * 1.5
 
 function TSPaintMixPanel:new(player, item)
     local paints = TSPS.getAvailablePaints(player:getInventory())
     local fontH = getTextManager():getFontHeight(UIFont.Small)
-    local width = 380
-    local height = 34 + #paints * ROW_H + fontH + 102
+    local contentY = getTextManager():getFontHeight(UIFont.Medium) + PAD
+    local sliderY = contentY + #paints * ROW_H + PAD
+    local previewY = sliderY + BTN_H * 2 + SLIDER_GAP + 2 * MARGIN
+
+    local sliderLabelW = math.min(getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Saturation")),
+     getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Brightness")))
+
+    local width = PANEL_W
+    local height = previewY + PREVIEW_SIZE + PAD
     local panel = ISPanel:new(
         math.floor((getCore():getScreenWidth() - width) / 2),
         math.floor((getCore():getScreenHeight() - height) / 2),
@@ -37,6 +51,10 @@ function TSPaintMixPanel:new(player, item)
     panel.paints = paints
     panel.parts = {}
     panel.fontH = fontH
+    panel.sliderLabelW = sliderLabelW
+    panel.contentY = contentY
+    panel.sliderY = sliderY
+    panel.previewY = previewY
     panel.moveWithMouse = true
     panel.wantKeyEvents = true
     panel.backgroundColor = { r = 0, g = 0, b = 0, a = 0.85 }
@@ -44,25 +62,51 @@ function TSPaintMixPanel:new(player, item)
     return panel
 end
 
+local function createSlider(panel, x, y)
+    local slider = ISSliderPanel:new(x, y, SLIDER_W, SLIDER_H, panel, nil)
+    slider:initialise()
+    slider:setDoButtons(false)
+    slider:setValues(0, 200, 1, 10)
+    slider:setCurrentValue(100, true)
+    panel:addChild(slider)
+    return slider
+end
+
 function TSPaintMixPanel:createChildren()
-    local y = 34
+    -- Paint selection
+    local y = self.contentY
     for _, paint in ipairs(self.paints) do
         local paintType = paint.entry.paint
         self.parts[paintType] = 0
 
-        local minus = ISButton:new(MINUS_X, y, 22, BTN_H, "-", self, function() self:changePart(paintType, -1) end)
+        local minus = ISButton:new(MINUS_X, y, BTN_SMALL_W, BTN_H, "-", self, function() self:changePart(paintType, -1) end)
         minus:initialise()
         self:addChild(minus)
 
-        local plus = ISButton:new(PLUS_X, y, 22, BTN_H, "+", self, function() self:changePart(paintType, 1) end)
+        local plus = ISButton:new(PLUS_X, y, BTN_SMALL_W, BTN_H, "+", self, function() self:changePart(paintType, 1) end)
         plus:initialise()
         self:addChild(plus)
 
         y = y + ROW_H
     end
 
+    -- Saturation/Value sliders.    
+    local sliderX = PAD + self.sliderLabelW + MARGIN
+    local sliderResetButtonX = self.width - PAD - BTN_W
+    self.satSlider = createSlider(self, sliderX, self.sliderY)
+    self.valSlider = createSlider(self, sliderX, self.sliderY + BTN_H + SLIDER_GAP)
+
+    self.satResetButton = ISButton:new(sliderResetButtonX, self.sliderY, BTN_W, BTN_H, getText("UI_TS_Slider_Reset"), self, (function() self.satSlider:setCurrentValue(100, true) end))
+    self.valResetButton = ISButton:new(sliderResetButtonX, self.sliderY + BTN_H + SLIDER_GAP, BTN_W, BTN_H, getText("UI_TS_Slider_Reset"), self, (function() self.valSlider:setCurrentValue(100, true) end))
+
+    self.satResetButton:initialise()
+    self.valResetButton:initialise()
+    self:addChild(self.satResetButton)
+    self:addChild(self.valResetButton)
+
+    -- Confirm/cancel buttons
     local footerY = self.height - PAD - BTN_H
-    self.paintButton = ISButton:new(self.width - PAD - BTN_W * 2 - 8, footerY, BTN_W, BTN_H, getText("UI_TS_Mix_Paint"), self, self.onPaint)
+    self.paintButton = ISButton:new(self.width - PAD - BTN_W * 2 - MARGIN, footerY, BTN_W, BTN_H, getText("UI_TS_Mix_Paint"), self, self.onPaint)
     self.paintButton:initialise()
     self:addChild(self.paintButton)
 
@@ -90,6 +134,8 @@ function TSPaintMixPanel:getMix()
             mix[#mix + 1] = { paint = paint.entry.paint, parts = parts }
         end
     end
+    mix.sat = self.satSlider and self.satSlider:getCurrentValue() / 100 or 1
+    mix.val = self.valSlider and self.valSlider:getCurrentValue() / 100 or 1
     return mix
 end
 
@@ -97,47 +143,40 @@ function TSPaintMixPanel:getCost()
     return #self:getMix()
 end
 
-function TSPaintMixPanel:getSelectedNames()
-    local names = {}
-    for _, paint in ipairs(self.paints) do
-        if (self.parts[paint.entry.paint] or 0) > 0 then
-            names[#names + 1] = getText(paint.entry.text)
-        end
-    end
-    return table.concat(names, ", ")
-end
-
 function TSPaintMixPanel:prerender()
     ISPanel.prerender(self)
-    self:drawText(getText("UI_TS_Mix_Title"), PAD, PAD, 1, 1, 1, 1, UIFont.Small)
 
-    local y = 34
+    -- Header
+    self:drawText(getText("UI_TS_Mix_Title"), PAD, PAD * 0.35, 1, 1, 1, 1, UIFont.Medium)
+
+    -- Paint selection
+    local y = self.contentY
     for _, paint in ipairs(self.paints) do
         local color = paint.entry.color
         local textY = y + (ROW_H - self.fontH) / 2
+        local valueStr = tostring(self.parts[paint.entry.paint] or 0)
+        local valueStrSizeX = getTextManager():MeasureStringX(UIFont.Small, valueStr)
         self:drawRect(PAD, y + 4, SWATCH, SWATCH, 1, color[1], color[2], color[3])
         self:drawRectBorder(PAD, y + 4, SWATCH, SWATCH, 0.4, 0, 0, 0)
         self:drawText(getText(paint.entry.text) .. " (" .. paint.uses .. ")", PAD + 24, textY, 1, 1, 1, 1, UIFont.Small)
-        self:drawText(tostring(self.parts[paint.entry.paint] or 0), COUNT_X, textY, 1, 1, 1, 1, UIFont.Small)
+        self:drawText(valueStr, COUNT_X - valueStrSizeX / 2, textY, 1, 1, 1, 1, UIFont.Small)
         y = y + ROW_H
     end
 
+    -- Saturation/Value slider text
+    local valueX = PAD + self.sliderLabelW + SLIDER_W + 2 * MARGIN
+    local satY = self.sliderY + (SLIDER_H - self.fontH) / 2
+    self:drawText(getText("UI_TS_Mix_Saturation"), PAD, satY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(string.format("%d%%", math.floor(self.satSlider:getCurrentValue())), valueX, satY, 1, 1, 1, 1, UIFont.Small)
+
+    local valY = self.sliderY + BTN_H + SLIDER_GAP + (SLIDER_H - self.fontH) / 2
+    self:drawText(getText("UI_TS_Mix_Brightness"), PAD, valY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(string.format("%d%%", math.floor(self.valSlider:getCurrentValue())), valueX, valY, 1, 1, 1, 1, UIFont.Small)
+
+    -- Colour preview
     local r, g, b = TSPS.mixColor(self:getMix())
-    local previewY = y + 8
-    self:drawText(getText("UI_TS_Mix_Result"), PAD, previewY, 1, 1, 1, 1, UIFont.Small)
-    local swatchY = previewY + self.fontH + 4
-    self:drawRect(PAD, swatchY, PREVIEW, PREVIEW, 1, r, g, b)
-    self:drawRectBorder(PAD, swatchY, PREVIEW, PREVIEW, 0.6, 0, 0, 0)
-
-    local texture = self.item:getTex()
-    if texture then
-        self:drawTextureScaledAspect(texture, PAD + PREVIEW + 10, swatchY, PREVIEW, PREVIEW, 1, r, g, b)
-    end
-
-    local cost = getText("UI_TS_Mix_Uses", self:getCost())
-    local names = self:getSelectedNames()
-    if names ~= "" then cost = cost .. " (" .. names .. ")" end
-    self:drawText(cost, PAD + PREVIEW * 2 + 20, swatchY, 1, 1, 1, 1, UIFont.Small)
+    self:drawRect(PAD, self.previewY, PREVIEW_SIZE, PREVIEW_SIZE, 1, r, g, b)
+    self:drawRectBorder(PAD, self.previewY, PREVIEW_SIZE, PREVIEW_SIZE, 0.6, 0, 0, 0)
 end
 
 function TSPaintMixPanel:onPaint()
@@ -148,8 +187,9 @@ function TSPaintMixPanel:onPaint()
         return
     end
 
+    local r, g, b = TSPS.mixColor(mix)
     self:close()
-    ISTimedActionQueue.add(TSPaintItemAction:new(self.player, item, mix))
+    ISTimedActionQueue.add(TSPaintItemAction:new(self.player, item, mix, r, g, b))
 end
 
 function TSPaintMixPanel:onCancel()

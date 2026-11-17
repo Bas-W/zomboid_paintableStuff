@@ -1,8 +1,9 @@
 {
     "UI_TS_Mix_Title": "Mix paint",
-    "UI_TS_Mix_Result": "Result",
-    "UI_TS_Mix_Uses": "Paint uses: %1",
+    "UI_TS_Mix_Saturation": "Saturation",
+    "UI_TS_Mix_Brightness": "Brightness",
     "UI_TS_Mix_Paint": "Paint",
     "UI_TS_Mix_Cancel": "Cancel",
-    "UI_TS_Paint_Failed": "Action failed"
+    "UI_TS_Paint_Failed": "Action failed",
+    "UI_TS_Slider_Reset": "Reset"
 }

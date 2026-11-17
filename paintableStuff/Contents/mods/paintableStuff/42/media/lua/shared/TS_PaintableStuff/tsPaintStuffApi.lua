@@ -100,7 +100,7 @@ function TSPS.canPaint(player, item, mix)
     return TSPS.isPaintable(item) and TSPS.hasBrush(inv) and TSPS.hasPaints(inv, mix)
 end
 
--- One use per participating paint, regardless of parts
+-- One use per included paint, regardless of parts used
 function TSPS.consumePaint(inv, mix)
     for _, part in ipairs(mix) do
         if part.parts > 0 then
@@ -113,19 +113,15 @@ function TSPS.consumePaint(inv, mix)
 end
 
 function TSPS.mixColor(mix)
-    local r, g, b, total = 0, 0, 0, 0
+    local entries = {}
     local pal = TSPS.getPalette()
     for _, part in ipairs(mix) do
         local entry = pal[part.paint]
         if entry and part.parts > 0 then
-            r = r + entry.color[1] * part.parts
-            g = g + entry.color[2] * part.parts
-            b = b + entry.color[3] * part.parts
-            total = total + part.parts
+            entries[#entries + 1] = { r = entry.color[1], g = entry.color[2], b = entry.color[3], parts = part.parts }
         end
     end
-    if total == 0 then return 1, 1, 1 end
-    return r / total, g / total, b / total
+    return TS_PaintColour.mix(entries, mix.sat, mix.val)
 end
 
 function TSPS.mixToString(mix)
@@ -212,7 +208,7 @@ end
 
 -- InventoryItem.load() copies colorRed/Green/Blue into col,
 -- this causes the icon to be tinted after reload.
--- It should be reset when the icon is drawn.
+-- This function resets the tint.
 function TSPS.ensureIconUntinted(item)
     if not item or not item:getModData().TS_Paint then return end
     if item:getR() ~= 1 or item:getG() ~= 1 or item:getB() ~= 1 then
