@@ -50,7 +50,7 @@ function Colour.adjust(r, g, b, sat, val)
     return Colour.hsvToRgb(h, math.max(0, math.min(1, s * sat)), math.max(0, math.min(1, v * val)))
 end
 
--- Calculatest the resulting colour of all mixed parts
+-- Calculates the resulting colour of all mixed parts
 -- entries: { { r = ..., g = ..., b = ..., parts = ... }, ... }
 function Colour.mix(entries, sat, val)
     local r, g, b, total = 0, 0, 0, 0

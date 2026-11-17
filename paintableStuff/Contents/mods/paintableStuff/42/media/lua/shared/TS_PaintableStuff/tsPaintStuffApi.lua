@@ -249,8 +249,8 @@ function TSPS.clearPaint(item, player)
     TSPS.log("clearPaint", "id", item:getID(), "localPlayer", tostring(player ~= nil and player:isLocalPlayer()))
     TSPS.logItem("clearPaint before", item)
     -- Reset to original modelindex
-    local index = item:getModData().TS_Paint.idx
-    if index == nil then index = 0 end
+    local paint = item:getModData().TS_Paint
+    local index = paint and paint.idx or 0
     local modelIdx = item:getModelIndex()
     if modelIdx ~= index then item:setModelIndex(index) end
 

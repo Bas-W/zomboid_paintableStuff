@@ -34,8 +34,9 @@ function TSPaintMixPanel:new(player, item)
     local sliderY = contentY + #paints * ROW_H + PAD
     local previewY = sliderY + BTN_H * 2 + SLIDER_GAP + 2 * MARGIN
 
-    local sliderLabelW = math.min(getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Saturation")),
-     getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Brightness")))
+    local sliderLabelW = math.max(
+        getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Saturation")),
+        getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Brightness")))
 
     local width = PANEL_W
     local height = previewY + PREVIEW_SIZE + PAD
