@@ -6,6 +6,7 @@ require "RadioCom/ISUIRadio/ISSliderPanel"
 require "TimedActions/ISTimedActionQueue"
 require "TS_PaintableStuff/tsPaintStuffApi"
 require "TS_PaintableStuff/tsPaintStuffActions"
+require "TS_PaintableStuff/tsPaintStuffSources"
 
 local TSPS = TS_PaintStuff
 
@@ -27,8 +28,8 @@ local PLUS_X = PANEL_W - PAD - BTN_SMALL_W
 local COUNT_X = PLUS_X - PAD - BTN_SMALL_W / 2
 local MINUS_X = COUNT_X - PAD - BTN_SMALL_W * 1.5
 
-function TSPaintMixPanel:new(player, item)
-    local paints = TSPS.getAvailablePaints(player:getInventory())
+function TSPaintMixPanel:new(player, item, sources, worldItem)
+    local paints = TSPS.getAvailablePaints(sources, player)
     local fontH = getTextManager():getFontHeight(UIFont.Small)
     local contentY = getTextManager():getFontHeight(UIFont.Medium) + PAD
     local sliderY = contentY + #paints * ROW_H + PAD
@@ -49,6 +50,8 @@ function TSPaintMixPanel:new(player, item)
     self.__index = self
     panel.player = player
     panel.item = item
+    panel.sources = sources
+    panel.worldItem = worldItem
     panel.paints = paints
     panel.parts = {}
     panel.fontH = fontH
@@ -182,15 +185,16 @@ end
 
 function TSPaintMixPanel:onPaint()
     local mix = self:getMix()
-    local item = TSPS.findItem(self.player, self.item:getID())
-    if not item or not TSPS.canPaint(self.player, item, mix) then
+    local item = TSPS.resolveTarget(self.player, self.item, self.worldItem)
+    if not item or not TSPS.canPaint(self.player, item, mix, self.sources) then
         HaloTextHelper.addBadText(self.player, getText("UI_TS_Paint_Failed"))
         return
     end
 
     local r, g, b = TSPS.mixColor(mix)
     self:close()
-    ISTimedActionQueue.add(TSPaintItemAction:new(self.player, item, mix, r, g, b))
+    local containers = TSPS.toActionList(self.sources)
+    ISTimedActionQueue.add(TSPaintItemAction:new(self.player, item, mix, r, g, b, containers, self.worldItem))
 end
 
 function TSPaintMixPanel:onCancel()

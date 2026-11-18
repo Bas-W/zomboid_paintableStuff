@@ -121,31 +121,143 @@ function TSPS.isInPlayerInventory(player, item)
     return item ~= nil and item:getOutermostContainer() == player:getInventory()
 end
 
-function TSPS.resolveItem(player, item)
-    if item and TSPS.isInPlayerInventory(player, item) then return item end
-    return item and TSPS.findItem(player, item:getID())
+function TSPS.asSources(value, player)
+    if value == nil and player then value = player:getInventory() end
+    if value == nil then return nil end
+    if type(value) == "table" and value.containers ~= nil then
+        return value
+    end
+    return { containers = { value } }
 end
 
-function TSPS.hasBrush(inv)
-    return inv:getFirstTagRecurse(ItemTag.PAINTBRUSH) ~= nil
+function TSPS.toArrayList(values)
+    local list = ArrayList.new()
+    if values then
+        if values.size and values.get then
+            for i = 0, values:size() - 1 do
+                list:add(values:get(i))
+            end
+        else
+            for _, value in ipairs(values) do
+                list:add(value)
+            end
+        end
+    end
+    return list
 end
 
-function TSPS.findUsableTin(inv, paintType)
-    local tins = inv:getAllTypeRecurse(paintType)
-    for i = 0, tins:size() - 1 do
-        local tin = tins:get(i)
-        if tin:getCurrentUses() > 0 then return tin end
+function TSPS.toActionList(sources)
+    if not sources then return nil end
+    return TSPS.toArrayList(sources.containers)
+end
+
+local function eachList(list, callback)
+    if not list then return end
+    if list.size and list.get then
+        for i = 0, list:size() - 1 do
+            callback(list:get(i))
+        end
+    else
+        for _, value in ipairs(list) do
+            callback(value)
+        end
     end
 end
 
-function TSPS.getAvailablePaints(inv)
+function TSPS.forEachSourceItem(sources, callback, player)
+    sources = TSPS.asSources(sources, player)
+    if not sources then return end
+
+    local seen = {}
+    eachList(sources.containers, function(container)
+        if not container then return end
+        local items = container:getItems()
+        for i = 0, items:size() - 1 do
+            local item = items:get(i)
+            if item then
+                local id = item:getID()
+                if not seen[id] then
+                    seen[id] = true
+                    callback(item)
+                end
+            end
+        end
+    end)
+end
+
+function TSPS.findInSources(sources, predicate, player)
+    local found
+    TSPS.forEachSourceItem(sources, function(item)
+        if not found and predicate(item) then found = item end
+    end, player)
+    return found
+end
+
+function TSPS.findItemInSources(sources, id)
+    return TSPS.findInSources(sources, function(item) return item:getID() == id end)
+end
+
+function TSPS.resolveItem(player, item)
+    if not item then return nil end
+
+    local worldItem = item.getWorldItem and item:getWorldItem() or nil
+    if worldItem then
+        local current = worldItem:getItem()
+        if current and current:getID() == item:getID() then return current end
+    end
+
+    local container = item.getContainer and item:getContainer() or nil
+    if container then
+        local found = container:getItemWithID(item:getID())
+        if found then return found end
+    end
+
+    return TSPS.findItem(player, item:getID())
+end
+
+function TSPS.resolveTarget(player, item, worldItem)
+    if worldItem then
+        local current = worldItem:getItem()
+        if not current then return nil end
+        if item and current:getID() ~= item:getID() then return nil end
+        return current
+    end
+    return TSPS.resolveItem(player, item)
+end
+
+function TSPS.hasBrush(sources, player)
+    return TSPS.findInSources(sources, function(item)
+        return item:hasTag(ItemTag.PAINTBRUSH)
+    end, player) ~= nil
+end
+
+function TSPS.isType(item, typeName)
+    if typeName == nil then return false end
+    if typeName:find(".", 1, true) then
+        return item:getFullType() == typeName or item:getType() == typeName
+    end
+    return item:getType() == typeName
+end
+
+function TSPS.findUsableTin(sources, paintType, player)
+    return TSPS.findInSources(sources, function(item)
+        return TSPS.isType(item, paintType) and item:getCurrentUses() > 0
+    end, player)
+end
+
+function TSPS.getAvailablePaints(sources, player)
+    local usesByType = {}
+    TSPS.forEachSourceItem(sources, function(item)
+        local uses = item.getCurrentUses and item:getCurrentUses() or 0
+        if uses > 0 then
+            local typeName = item:getType()
+            usesByType[typeName] = (usesByType[typeName] or 0) + uses
+        end
+    end, player)
+
     local result = {}
     for _, entry in ipairs(ISPaintMenu.PaintMenuItems) do
-        local tins = inv:getAllTypeRecurse(entry.paint)
-        local uses = 0
-        for i = 0, tins:size() - 1 do
-            uses = uses + tins:get(i):getCurrentUses()
-        end
+        local uses = usesByType[entry.paint] or 0
         if uses > 0 then
             result[#result + 1] = { entry = entry, uses = uses }
         end
@@ -153,26 +265,30 @@ function TSPS.getAvailablePaints(inv)
     return result
 end
 
-function TSPS.hasPaints(inv, mix)
+function TSPS.hasPaints(sources, mix, player)
     for _, part in ipairs(mix) do
-        if part.parts > 0 and not TSPS.findUsableTin(inv, part.paint) then return false end
+        if part.parts > 0 and not TSPS.findUsableTin(sources, part.paint, player) then
+            return false
+        end
     end
     return true
 end
 
-function TSPS.canPaint(player, item, mix)
-    local inv = player:getInventory()
-    return TSPS.isPaintable(item) and TSPS.hasBrush(inv) and TSPS.hasPaints(inv, mix)
+function TSPS.canPaint(player, item, mix, sources)
+    return TSPS.isPaintable(item)
+        and TSPS.hasBrush(sources, player)
+        and TSPS.hasPaints(sources, mix, player)
 end
 
--- One use per included paint, regardless of parts used
-function TSPS.consumePaint(inv, mix)
+-- One use per included paint, regardless of amount used
+function TSPS.consumePaint(sources, mix, player)
     for _, part in ipairs(mix) do
         if part.parts > 0 then
-            local tin = TSPS.findUsableTin(inv, part.paint)
+            local tin = TSPS.findUsableTin(sources, part.paint, player)
             if not tin then return false end
             TSPS.log("consumePaint", part.paint, "tinId", tin:getID(), "usesBefore", tin:getCurrentUses())
             tin:UseAndSync()
+            if isServer() and sendItemStats then sendItemStats(tin) end
         end
     end
     return true
@@ -321,8 +437,8 @@ function TSPS.isPetrolSource(item)
     return fc ~= nil and fc:contains(Fluid.Petrol) and fc:getAmount() >= TSPS.PETROL_PER_REMOVAL
 end
 
-function TSPS.findSolvent(inv)
-    return inv:getFirstEvalRecurse(TSPS.isPetrolSource)
+function TSPS.findSolvent(sources, player)
+    return TSPS.findInSources(sources, TSPS.isPetrolSource, player)
 end
 
 TSPS.Cloths = {
@@ -339,8 +455,8 @@ function TSPS.isCloth(item)
     return item:hasTag(ItemTag.CLEAN_STAINS) or TSPS.Cloths[item:getFullType()] == true
 end
 
-function TSPS.findCloth(inv)
-    return inv:getFirstEvalRecurse(TSPS.isCloth)
+function TSPS.findCloth(sources, player)
+    return TSPS.findInSources(sources, TSPS.isCloth, player)
 end
 
 function TSPS.consumePetrol(item)
@@ -348,6 +464,7 @@ function TSPS.consumePetrol(item)
     if not fc then return false end
     fc:adjustAmount(fc:getAmount() - TSPS.PETROL_PER_REMOVAL)
     item:syncItemFields()
+    if isServer() and sendItemStats then sendItemStats(item) end
     return true
 end
 

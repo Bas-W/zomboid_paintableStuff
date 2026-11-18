@@ -19,17 +19,86 @@ local function notifyItemClients(player, item)
     end
 end
 
+local function actionSources(action)
+    if not action.containers then return nil end
+    return { containers = action.containers }
+end
+
+local function syncItem(item)
+    if not isServer() then return end
+    item:syncItemFields()
+    if sendItemStats then sendItemStats(item) end
+end
+
+local function sendPaintEcho(player, playerNum, item, worldItem, r, g, b, mix)
+    if not isServer() then return end
+    local paint = item:getModData().TS_Paint
+    local idx = paint and paint.idx or nil
+
+    if worldItem then
+        local square = worldItem:getSquare()
+        if not square then return end
+        sendServerCommand(MODULE, "paintedWorld", {
+            playerNum = playerNum,
+            x = square:getX(),
+            y = square:getY(),
+            z = square:getZ(),
+            itemId = item:getID(),
+            r = r,
+            g = g,
+            b = b,
+            mix = TSPS.mixToString(mix),
+            idx = idx,
+        })
+    else
+        sendServerCommand(player, MODULE, "painted", {
+            playerNum = playerNum,
+            itemId = item:getID(),
+            r = r,
+            g = g,
+            b = b,
+            mix = TSPS.mixToString(mix),
+            idx = idx,
+        })
+    end
+end
+
+local function sendClearEcho(player, playerNum, item, worldItem)
+    if not isServer() then return end
+    local idx = item:getModelIndex()
+    if worldItem then
+        local square = worldItem:getSquare()
+        if not square then return end
+        sendServerCommand(MODULE, "unpaintedWorld", {
+            playerNum = playerNum,
+            x = square:getX(),
+            y = square:getY(),
+            z = square:getZ(),
+            itemId = item:getID(),
+            idx = idx,
+        })
+    else
+        sendServerCommand(player, MODULE, "unpainted", {
+            playerNum = playerNum,
+            itemId = item:getID(),
+            idx = idx,
+        })
+    end
+end
+
 -- Paint application
 
 TSPaintItemAction = ISBaseTimedAction:derive("TSPaintItemAction")
 
-function TSPaintItemAction:new(character, item, mix, r, g, b)
+function TSPaintItemAction:new(character, item, mix, r, g, b, containers, worldItem)
     local o = ISBaseTimedAction.new(self, character)
     o.item = item
     o.mix = mix
     o.r = r
     o.g = g
     o.b = b
+    o.containers = containers
+    o.worldItem = worldItem
     o.maxTime = o:getDuration()
     o.stopOnWalk = true
     o.stopOnRun = true
@@ -43,10 +112,10 @@ function TSPaintItemAction:getDuration()
 end
 
 function TSPaintItemAction:isValid()
-    local item = TSPS.resolveItem(self.character, self.item)
+    local item = TSPS.resolveTarget(self.character, self.item, self.worldItem)
     if not item then return false end
     self.item = item
-    return TSPS.canPaint(self.character, item, self.mix)
+    return TSPS.canPaint(self.character, item, self.mix, actionSources(self))
 end
 
 function TSPaintItemAction:update()
@@ -82,7 +151,7 @@ end
 function TSPaintItemAction:complete()
     local player = self.character
     local playerNum = player:getPlayerNum()
-    local item = TSPS.resolveItem(player, self.item)
+    local item = TSPS.resolveTarget(player, self.item, self.worldItem)
     local mix = self.mix or {}
     local r, g, b = TSPS.clampRGB(self.r, self.g, self.b)
     TSPS.log("TSPaintItemAction:complete",
@@ -92,7 +161,7 @@ function TSPaintItemAction:complete()
         "itemId", item and item:getID(),
         "rgb", r, g, b,
         "mix", TSPS.mixToString(mix))
-    if not item or #mix == 0 or not TSPS.canPaint(player, item, mix) then
+    if not item or #mix == 0 or not TSPS.canPaint(player, item, mix, actionSources(self)) then
         TSPS.log("TSPaintItemAction:complete REJECTED")
         if isServer() then
             sendServerCommand(player, MODULE, "failed", { playerNum = playerNum })
@@ -100,7 +169,7 @@ function TSPaintItemAction:complete()
         return true
     end
 
-    if not TSPS.consumePaint(player:getInventory(), mix) then
+    if not TSPS.consumePaint(actionSources(self), mix, player) then
         TSPS.log("TSPaintItemAction:complete REJECTED (consume failed)")
         if isServer() then
             sendServerCommand(player, MODULE, "failed", { playerNum = playerNum })
@@ -110,17 +179,10 @@ function TSPaintItemAction:complete()
     TSPS.applyPaint(item, r, g, b, mix, nil, player)
 
     if isServer() then
-        item:syncItemFields()
+        syncItem(item)
         notifyItemClients(player, item)
-        sendServerCommand(player, MODULE, "painted", {
-            playerNum = playerNum,
-            itemId = item:getID(),
-            r = r,
-            g = g,
-            b = b,
-            mix = TSPS.mixToString(mix),
-        })
-        TSPS.log("TSPaintItemAction:complete sent 'painted' echo")
+        sendPaintEcho(player, playerNum, item, self.worldItem, r, g, b, mix)
+        TSPS.log("TSPaintItemAction:complete sent paint echo")
     end
     return true
 end
@@ -129,11 +191,11 @@ end
 
 TSPaintRemoveAction = ISBaseTimedAction:derive("TSPaintRemoveAction")
 
-function TSPaintRemoveAction:new(character, item, solvent, cloth)
+function TSPaintRemoveAction:new(character, item, containers, worldItem)
     local o = ISBaseTimedAction.new(self, character)
     o.item = item
-    o.solvent = solvent
-    o.cloth = cloth
+    o.containers = containers
+    o.worldItem = worldItem
     o.maxTime = o:getDuration()
     o.stopOnWalk = true
     o.stopOnRun = true
@@ -147,12 +209,11 @@ function TSPaintRemoveAction:getDuration()
 end
 
 function TSPaintRemoveAction:isValid()
-    local item = TSPS.resolveItem(self.character, self.item)
+    local item = TSPS.resolveTarget(self.character, self.item, self.worldItem)
     if not item or not TSPS.isPainted(item) then return false end
     self.item = item
-    local inv = self.character:getInventory()
-    self.solvent = TSPS.findSolvent(inv)
-    self.cloth = TSPS.findCloth(inv)
+    self.solvent = TSPS.findSolvent(actionSources(self), self.character)
+    self.cloth = TSPS.findCloth(actionSources(self), self.character)
     return self.solvent ~= nil and self.cloth ~= nil
 end
 
@@ -162,6 +223,8 @@ function TSPaintRemoveAction:update()
 end
 
 function TSPaintRemoveAction:start()
+    self.solvent = self.solvent or TSPS.findSolvent(actionSources(self), self.character)
+    self.cloth = self.cloth or TSPS.findCloth(actionSources(self), self.character)
     TSPS.log("TSPaintRemoveAction:start",
         "playerNum", self.character:getPlayerNum(),
         "itemId", self.item:getID(),
@@ -189,9 +252,9 @@ end
 function TSPaintRemoveAction:complete()
     local player = self.character
     local playerNum = player:getPlayerNum()
-    local item = TSPS.resolveItem(player, self.item)
-    local solvent = TSPS.resolveItem(player, self.solvent)
-    local cloth = TSPS.resolveItem(player, self.cloth)
+    local item = TSPS.resolveTarget(player, self.item, self.worldItem)
+    local solvent = TSPS.findSolvent(actionSources(self), player)
+    local cloth = TSPS.findCloth(actionSources(self), player)
     TSPS.log("TSPaintRemoveAction:complete",
         "isServer", tostring(isServer()),
         "isClient", tostring(isClient()),
@@ -213,13 +276,10 @@ function TSPaintRemoveAction:complete()
     TSPS.clearPaint(item, player)
 
     if isServer() then
-        item:syncItemFields()
+        syncItem(item)
         notifyItemClients(player, item)
-        sendServerCommand(player, MODULE, "unpainted", {
-            playerNum = playerNum,
-            itemId = item:getID(),
-        })
-        TSPS.log("TSPaintRemoveAction:complete sent 'unpainted' echo")
+        sendClearEcho(player, playerNum, item, self.worldItem)
+        TSPS.log("TSPaintRemoveAction:complete sent clear echo")
     end
     return true
 end
