@@ -5,6 +5,7 @@ require "TS_PaintableStuff/tsPaintStuffApi"
 
 local TSPS = TS_PaintStuff
 local MODULE = TSPS.MODULE
+local ACTION_DUR = 50
 
 local function notifyItemClients(player, item)
     if not isServer() then return end
@@ -18,13 +19,39 @@ local function notifyItemClients(player, item)
     end
 end
 
+-- Paint application
+
 TSPaintItemAction = ISBaseTimedAction:derive("TSPaintItemAction")
+
+function TSPaintItemAction:new(character, item, mix, r, g, b)
+    local o = ISBaseTimedAction.new(self, character)
+    o.item = item
+    o.mix = mix
+    o.r = r
+    o.g = g
+    o.b = b
+    o.maxTime = o:getDuration()
+    o.stopOnWalk = true
+    o.stopOnRun = true
+    o.caloriesModifier = 4
+    return o
+end
+
+function TSPaintItemAction:getDuration()
+    if self.character:isTimedActionInstant() then return 1 end
+    return ACTION_DUR
+end
 
 function TSPaintItemAction:isValid()
     local item = TSPS.resolveItem(self.character, self.item)
     if not item then return false end
     self.item = item
     return TSPS.canPaint(self.character, item, self.mix)
+end
+
+function TSPaintItemAction:update()
+    self.item:setJobDelta(self:getJobDelta())
+    self.character:setMetabolicTarget(Metabolics.LightWork)
 end
 
 function TSPaintItemAction:start()
@@ -38,11 +65,6 @@ function TSPaintItemAction:start()
     self.sound = self.character:playSound("Painting")
     self.item:setJobType(getText("ContextMenu_TS_Painting"))
     self.item:setJobDelta(0)
-end
-
-function TSPaintItemAction:update()
-    self.item:setJobDelta(self:getJobDelta())
-    self.character:setMetabolicTarget(Metabolics.LightWork)
 end
 
 function TSPaintItemAction:stop()
@@ -103,26 +125,26 @@ function TSPaintItemAction:complete()
     return true
 end
 
-function TSPaintItemAction:getDuration()
-    if self.character:isTimedActionInstant() then return 1 end
-    return 60
-end
+-- Paint removal
 
-function TSPaintItemAction:new(character, item, mix, r, g, b)
+TSPaintRemoveAction = ISBaseTimedAction:derive("TSPaintRemoveAction")
+
+function TSPaintRemoveAction:new(character, item, solvent, cloth)
     local o = ISBaseTimedAction.new(self, character)
     o.item = item
-    o.mix = mix
-    o.r = r
-    o.g = g
-    o.b = b
+    o.solvent = solvent
+    o.cloth = cloth
     o.maxTime = o:getDuration()
     o.stopOnWalk = true
     o.stopOnRun = true
-    o.caloriesModifier = 4
+    o.caloriesModifier = 2
     return o
 end
 
-TSPaintRemoveAction = ISBaseTimedAction:derive("TSPaintRemoveAction")
+function TSPaintRemoveAction:getDuration()
+    if self.character:isTimedActionInstant() then return 1 end
+    return ACTION_DUR
+end
 
 function TSPaintRemoveAction:isValid()
     local item = TSPS.resolveItem(self.character, self.item)
@@ -132,6 +154,11 @@ function TSPaintRemoveAction:isValid()
     self.solvent = TSPS.findSolvent(inv)
     self.cloth = TSPS.findCloth(inv)
     return self.solvent ~= nil and self.cloth ~= nil
+end
+
+function TSPaintRemoveAction:update()
+    self.item:setJobDelta(self:getJobDelta())
+    self.character:setMetabolicTarget(Metabolics.LightWork)
 end
 
 function TSPaintRemoveAction:start()
@@ -145,11 +172,6 @@ function TSPaintRemoveAction:start()
     self.sound = self.character:playSound("CleanBloodScrub")
     self.item:setJobType(getText("ContextMenu_TS_RemovingPaint"))
     self.item:setJobDelta(0)
-end
-
-function TSPaintRemoveAction:update()
-    self.item:setJobDelta(self:getJobDelta())
-    self.character:setMetabolicTarget(Metabolics.LightWork)
 end
 
 function TSPaintRemoveAction:stop()
@@ -200,21 +222,4 @@ function TSPaintRemoveAction:complete()
         TSPS.log("TSPaintRemoveAction:complete sent 'unpainted' echo")
     end
     return true
-end
-
-function TSPaintRemoveAction:getDuration()
-    if self.character:isTimedActionInstant() then return 1 end
-    return 100
-end
-
-function TSPaintRemoveAction:new(character, item, solvent, cloth)
-    local o = ISBaseTimedAction.new(self, character)
-    o.item = item
-    o.solvent = solvent
-    o.cloth = cloth
-    o.maxTime = o:getDuration()
-    o.stopOnWalk = true
-    o.stopOnRun = true
-    o.caloriesModifier = 2
-    return o
 end
