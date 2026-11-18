@@ -5,10 +5,6 @@ require "TS_PaintableStuff/tsPaintStuffApi"
 local TSPS = TS_PaintStuff
 local MODULE = TSPS.MODULE
 
-local function clamp01(value)
-    return math.max(0, math.min(1, tonumber(value) or 1))
-end
-
 if isClient() then
     Events.OnServerCommand.Add(function(module, command, args)
         if module ~= MODULE then return end
@@ -36,7 +32,7 @@ if isClient() then
 
         if command == "painted" then
             local mix = TSPS.sanitizeMix(TSPS.mixFromString(args.mix))
-            local r, g, b = clamp01(args.r), clamp01(args.g), clamp01(args.b)
+            local r, g, b = TSPS.clampRGB(args.r, args.g, args.b)
             TSPS.log("OnServerCommand applying echo", "rgb", r, g, b, "mix", TSPS.tableToString(mix))
             TSPS.applyPaint(item, r, g, b, mix, nil, player)
         elseif command == "unpainted" then

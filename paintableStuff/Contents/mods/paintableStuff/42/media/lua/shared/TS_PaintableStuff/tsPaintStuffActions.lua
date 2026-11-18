@@ -6,10 +6,6 @@ require "TS_PaintableStuff/tsPaintStuffApi"
 local TSPS = TS_PaintStuff
 local MODULE = TSPS.MODULE
 
-local function clamp01(value)
-    return math.max(0, math.min(1, tonumber(value) or 1))
-end
-
 local function notifyItemClients(player, item)
     if not isServer() then return end
     if item == player:getPrimaryHandItem() or item == player:getSecondaryHandItem() then
@@ -66,7 +62,7 @@ function TSPaintItemAction:complete()
     local playerNum = player:getPlayerNum()
     local item = TSPS.resolveItem(player, self.item)
     local mix = self.mix or {}
-    local r, g, b = clamp01(self.r), clamp01(self.g), clamp01(self.b)
+    local r, g, b = TSPS.clampRGB(self.r, self.g, self.b)
     TSPS.log("TSPaintItemAction:complete",
         "isServer", tostring(isServer()),
         "isClient", tostring(isClient()),

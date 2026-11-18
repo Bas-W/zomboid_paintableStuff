@@ -40,6 +40,14 @@ function TSPS.tableToString(tbl)
     return "{" .. table.concat(parts, ", ") .. "}"
 end
 
+-- Clamp rgb values to the valid range 0 - 0.99
+function TSPS.clampRGB(r, g, b)
+    rClmp = math.max(0, math.min(1, tonumber(r) or 0.99))
+    gClmp = math.max(0, math.min(1, tonumber(g) or 0.99))
+    bClmp = math.max(0, math.min(1, tonumber(b) or 0.99))
+    return rClmp, gClmp, bClmp
+end
+
 function TSPS.log(...)
     if not TSPS.DEBUG then return end
     local parts = {}
