@@ -19,12 +19,14 @@ Examples:
     python3 scripts/gen_world_models.py Base.Crowbar Base.Screwdriver \
         --prefix TS_ \
         --mod-dir ../zomboid_paintableStuff_tools/paintableStuff_tools/Contents/mods/paintableStuffTools/42 \
-        --out ../zomboid_paintableStuff_tools/paintableStuff_tools/Contents/mods/paintableStuffTools/42/media/scripts/tsPSWorldModels.txt
+        --out ../zomboid_paintableStuff_tools/paintableStuff_tools/Contents/mods/paintableStuffTools/42/media/scripts/tsPSToolsWorldModels.txt
 
     python3 scripts/gen_world_models.py Base.Pistol2 Base.Revolver_Short \
         --prefix ABC_ \
         --mod-dir ../zomboid_paintableStuff_weapons/paintableStuff_weapons/Contents/mods/paintableStuffWeapons/42 \
-        --out ../zomboid_paintableStuff_weapons/paintableStuff_weapons/Contents/mods/paintableStuffWeapons/42/media/scripts/tsPSWorldModels.txt
+        --out ../zomboid_paintableStuff_weapons/paintableStuff_weapons/Contents/mods/paintableStuffWeapons/42/media/scripts/tsPSWeaponsWorldModels.txt
+
+The output filename must be unique. If the same name is used in multiple mods, they will overwrite each other.
 """
 
 from __future__ import annotations
