@@ -7,8 +7,10 @@ require "BuildingObjects/ISPaintMenu"
     require "TS_PaintableStuff/tsPaintStuffApi"
 
     TS_PaintStuff.registerPaintable("MyMod.Item", { index = 0 })
-    Where the index is the texture index corresponding to the texture to which the tint should be applied.
-    For items with only one possible texture this should always be 0.
+    Where the optional `index` is the texture index the tint should be applied to.
+    Supplying `index` also normalises painted items to that model index (for example a
+    forged crowbar becomes the normal variant). Omit `index` to keep the item's current
+    model index, which is safer for items with variants managed by other mods.
     A tint mask should be added, the name should be "[ItemTextureName]TINT.png".
 ]]
 
@@ -63,7 +65,10 @@ function TSPS.logItem(tag, item)
 end
 
 function TSPS.registerPaintable(fullType, opts)
-    TSPS.Paintables[fullType] = { index = math.max(0, math.floor(tonumber(opts and opts.index) or 0)) }
+    -- `index` is optional. When omitted, painting keeps the item's current model index.
+    local index = opts and tonumber(opts.index)
+    if index then index = math.max(0, math.floor(index)) end
+    TSPS.Paintables[fullType] = { index = index }
 end
 
 function TSPS.unregisterPaintable(fullType)
@@ -222,18 +227,19 @@ end
 function TSPS.applyPaint(item, r, g, b, mix, index, player)
     local registration = TSPS.Paintables[item:getFullType()]
     local previous = item:getModData().TS_Paint
-    index = safeIndex(item, index or (registration and registration.index) or 0)
     local modelIdx = item:getModelIndex()
     local originalIdx = previous and previous.idx or modelIdx
+    local targetIdx = index or (registration and registration.index)
+    if targetIdx ~= nil then targetIdx = safeIndex(item, targetIdx) end
     TSPS.log("applyPaint",
         "id", item:getID(),
         "rgb", r, g, b,
         "mix", TSPS.tableToString(mix),
-        "index", index,
+        "index", tostring(targetIdx),
         "modelIndex", modelIdx,
         "originalIdx", originalIdx,
         "localPlayer", tostring(player ~= nil and player:isLocalPlayer()))
-    if modelIdx ~= index then item:setModelIndex(index) end
+    if targetIdx ~= nil and modelIdx ~= targetIdx then item:setModelIndex(targetIdx) end
 
     item:setColorRed(r)
     item:setColorGreen(g)
@@ -248,11 +254,12 @@ end
 function TSPS.clearPaint(item, player)
     TSPS.log("clearPaint", "id", item:getID(), "localPlayer", tostring(player ~= nil and player:isLocalPlayer()))
     TSPS.logItem("clearPaint before", item)
-    -- Reset to original modelindex
     local paint = item:getModData().TS_Paint
-    local index = paint and paint.idx or 0
-    local modelIdx = item:getModelIndex()
-    if modelIdx ~= index then item:setModelIndex(index) end
+    local index = paint and paint.idx
+    if index ~= nil then
+        local modelIdx = item:getModelIndex()
+        if modelIdx ~= index then item:setModelIndex(index) end
+    end
 
     item:setColorRed(1)
     item:setColorGreen(1)
