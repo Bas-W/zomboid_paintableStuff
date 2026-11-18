@@ -5,6 +5,7 @@
 -- Unfortunately, this is quite hacky.
 
 require "TS_PaintableStuff/tsPaintStuffApi"
+require "TS_PaintableStuff/tsPaintStuffWorldModelOverride"
 
 local TSPS = TS_PaintStuff
 

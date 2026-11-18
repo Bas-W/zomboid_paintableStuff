@@ -30,11 +30,6 @@ TSPS.Paintables = TSPS.Paintables or {}
 TSPS.MAX_MIX_PARTS = 10
 TSPS.PETROL_PER_REMOVAL = 0.5
 
-TSPS.settings = TSPS.settings or {}
-if TSPS.settings.worldModelSwap == nil then
-    TSPS.settings.worldModelSwap = true
-end
-
 TSPS.DEBUG = false
 
 function TSPS.side()
@@ -270,7 +265,7 @@ function TSPS.applyPaint(item, r, g, b, mix, index, player)
     item:setColor(Color.new(1, 1, 1, 1))
     item:setCustomColor(false)
     item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = originalIdx }
-    if isClient() or not isServer() then
+    if (isClient() or not isServer()) and TSPS.updateWorldModel then
         TSPS.updateWorldModel(item)
     end
     refreshItem(item, player)
@@ -293,7 +288,7 @@ function TSPS.clearPaint(item, player)
     item:setColor(Color.new(1, 1, 1, 1))
     item:setCustomColor(false)
     item:getModData().TS_Paint = nil
-    if isClient() or not isServer() then
+    if (isClient() or not isServer()) and TSPS.updateWorldModel then
         TSPS.updateWorldModel(item)
     end
     refreshItem(item, player)
@@ -317,108 +312,6 @@ end
 
 function TSPS.getPaintColor(item)
     return item and item:getModData().TS_Paint
-end
-
-local function isLocalRenderSide()
-    return isClient() or not isServer()
-end
-
-local function resolveWorldPainted(registration, item)
-    local value = registration and registration.worldPainted
-    if type(value) == "table" then
-        return value[item:getModelIndex()] or value.default
-    end
-    return value
-end
-
-local function worldModelExists(name)
-    local manager = getScriptManager and getScriptManager()
-    return manager ~= nil and manager:getModelScript(name) ~= nil
-end
-
-function TSPS.getWorldPaintedModel(item)
-    local registration = TSPS.Paintables[item:getFullType()]
-    if not registration then return nil end
-    return resolveWorldPainted(registration, item)
-end
-
--- Force WorldItemAtlas refresh.
-function TSPS.invalidateWorldAtlas(item)
-    if not item or not item:getWorldItem() then return end
-    item:setWorldZRotation(item:getWorldZRotation() + 0.001)
-end
-
-function TSPS.updateWorldModel(item)
-    if not item then return end
-
-    local md = item:getModData()
-    local state = md.TS_WorldModel
-    local applied = type(state) == "table" and state.applied or nil
-    local current = md.worldStaticModel
-
-    -- Avoid overriding other mod
-    if current ~= nil and current ~= applied then
-        return
-    end
-
-    local desired
-    if TSPS.settings.worldModelSwap and TSPS.isPainted(item) then
-        local candidate = TSPS.getWorldPaintedModel(item)
-        if candidate and worldModelExists(candidate) then
-            desired = candidate
-        end
-    end
-
-    if desired == current then return end
-
-    if desired then
-        if not state then
-            state = {
-                had = false,
-                prev = nil,
-            }
-            md.TS_WorldModel = state
-        end
-        state.applied = desired
-        md.worldStaticModel = desired
-        TSPS.invalidateWorldAtlas(item)
-        TSPS.log("worldModel", "id", item:getID(), "model", desired)
-    elseif state then
-        if state.had then
-            md.worldStaticModel = state.prev
-        else
-            md.worldStaticModel = nil
-        end
-        md.TS_WorldModel = nil
-        TSPS.invalidateWorldAtlas(item)
-        TSPS.log("worldModel", "id", item:getID(), "restored")
-    end
-end
-
-function TSPS.refreshLocalWorldModels(player)
-    player = player or (getPlayer and getPlayer())
-    if not player then return end
-
-    local inventory = player:getInventory()
-    if inventory then
-        inventory:getAllEvalRecurse(function(item)
-            local md = item and item:getModData()
-            if md and (md.TS_Paint or md.TS_WorldModel) then
-                TSPS.updateWorldModel(item)
-            end
-            return false
-        end)
-    end
-
-    TSPS.updateWorldModel(player:getPrimaryHandItem())
-    TSPS.updateWorldModel(player:getSecondaryHandItem())
-end
-
-function TSPS.setWorldModelSwap(enabled)
-    TSPS.settings.worldModelSwap = enabled == true
-    if isLocalRenderSide() then
-        TSPS.refreshLocalWorldModels()
-    end
 end
 
 -- Paint removal
