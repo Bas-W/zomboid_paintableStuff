@@ -30,6 +30,29 @@ local function syncItem(item)
     if sendItemStats then sendItemStats(item) end
 end
 
+local ECHO_RADIUS = 10
+
+local function sendContainerEcho(player, square, command, args)
+    if not isServer() then return end
+    local players = getOnlinePlayers and getOnlinePlayers()
+    if not players then
+        sendServerCommand(MODULE, command, args)
+        return
+    end
+    for i = 0, players:size() - 1 do
+        local target = players:get(i)
+        if target then
+            local inRange = target == player
+            if not inRange and square and target:getCurrentSquare() then
+                inRange = square:DistToProper(target:getCurrentSquare()) <= ECHO_RADIUS
+            end
+            if inRange then
+                sendServerCommand(target, MODULE, command, args)
+            end
+        end
+    end
+end
+
 local function sendPaintEcho(player, playerNum, item, worldItem, r, g, b, mix)
     if not isServer() then return end
     local paint = item:getModData().TS_Paint
@@ -51,8 +74,8 @@ local function sendPaintEcho(player, playerNum, item, worldItem, r, g, b, mix)
             idx = idx,
         })
     else
-        sendServerCommand(player, MODULE, "painted", {
-            playerNum = playerNum,
+        local container = item:getContainer()
+        sendContainerEcho(player, container and container:getSquare() or nil, "paintedNearby", {
             itemId = item:getID(),
             r = r,
             g = g,
@@ -78,8 +101,8 @@ local function sendClearEcho(player, playerNum, item, worldItem)
             idx = idx,
         })
     else
-        sendServerCommand(player, MODULE, "unpainted", {
-            playerNum = playerNum,
+        local container = item:getContainer()
+        sendContainerEcho(player, container and container:getSquare() or nil, "unpaintedNearby", {
             itemId = item:getID(),
             idx = idx,
         })
@@ -115,30 +138,32 @@ function TSPaintItemAction:isValid()
     local item = TSPS.resolveTarget(self.character, self.item, self.worldItem)
     if not item then return false end
     self.item = item
-    return TSPS.canPaint(self.character, item, self.mix, actionSources(self))
+    return true
 end
 
 function TSPaintItemAction:update()
-    self.item:setJobDelta(self:getJobDelta())
+    if self.item then self.item:setJobDelta(self:getJobDelta()) end
     self.character:setMetabolicTarget(Metabolics.LightWork)
 end
 
 function TSPaintItemAction:start()
     TSPS.log("TSPaintItemAction:start",
         "playerNum", self.character:getPlayerNum(),
-        "itemId", self.item:getID(),
+        "itemId", self.item and self.item:getID(),
         "rgb", self.r, self.g, self.b,
         "mix", TSPS.mixToString(self.mix))
     self:setActionAnim(CharacterActionAnims.Paint)
     self:setOverrideHandModels("PaintBrush", nil)
     self.sound = self.character:playSound("Painting")
-    self.item:setJobType(getText("ContextMenu_TS_Painting"))
-    self.item:setJobDelta(0)
+    if self.item then
+        self.item:setJobType(getText("ContextMenu_TS_Painting"))
+        self.item:setJobDelta(0)
+    end
 end
 
 function TSPaintItemAction:stop()
     if self.sound then self.character:stopOrTriggerSound(self.sound) end
-    self.item:setJobDelta(0)
+    if self.item then self.item:setJobDelta(0) end
     ISBaseTimedAction.stop(self)
 end
 
@@ -212,13 +237,11 @@ function TSPaintRemoveAction:isValid()
     local item = TSPS.resolveTarget(self.character, self.item, self.worldItem)
     if not item or not TSPS.isPainted(item) then return false end
     self.item = item
-    self.solvent = TSPS.findSolvent(actionSources(self), self.character)
-    self.cloth = TSPS.findCloth(actionSources(self), self.character)
-    return self.solvent ~= nil and self.cloth ~= nil
+    return true
 end
 
 function TSPaintRemoveAction:update()
-    self.item:setJobDelta(self:getJobDelta())
+    if self.item then self.item:setJobDelta(self:getJobDelta()) end
     self.character:setMetabolicTarget(Metabolics.LightWork)
 end
 
@@ -227,19 +250,21 @@ function TSPaintRemoveAction:start()
     self.cloth = self.cloth or TSPS.findCloth(actionSources(self), self.character)
     TSPS.log("TSPaintRemoveAction:start",
         "playerNum", self.character:getPlayerNum(),
-        "itemId", self.item:getID(),
+        "itemId", self.item and self.item:getID(),
         "solventId", self.solvent and self.solvent:getID(),
         "clothId", self.cloth and self.cloth:getID())
     self:setActionAnim(CharacterActionAnims.Paint)
     self:setOverrideHandModels(self.cloth, self.solvent)
     self.sound = self.character:playSound("CleanBloodScrub")
-    self.item:setJobType(getText("ContextMenu_TS_RemovingPaint"))
-    self.item:setJobDelta(0)
+    if self.item then
+        self.item:setJobType(getText("ContextMenu_TS_RemovingPaint"))
+        self.item:setJobDelta(0)
+    end
 end
 
 function TSPaintRemoveAction:stop()
     if self.sound then self.character:stopOrTriggerSound(self.sound) end
-    self.item:setJobDelta(0)
+    if self.item then self.item:setJobDelta(0) end
     ISBaseTimedAction.stop(self)
 end
 

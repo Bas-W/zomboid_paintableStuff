@@ -11,7 +11,7 @@ local TSPS = TS_PaintStuff
 
 local SCAN_RADIUS = 8
 local MOVE_SCAN_MS = 750
-local IDLE_SCAN_MS = 500
+local IDLE_SCAN_MS = 5000
 
 local lastMoveScan = 0
 local lastIdleScan = 0
@@ -75,6 +75,7 @@ local function onPlayerMove(player)
 end
 
 local function onTick()
+    if not TSPS.settings.worldModelSwap then return end
     local now = getTimestamp and getTimestamp() or 0
     if now - lastIdleScan < IDLE_SCAN_MS then return end
     lastIdleScan = now

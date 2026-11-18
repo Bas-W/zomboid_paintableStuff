@@ -22,6 +22,45 @@ local function findWorldItem(args)
     return nil
 end
 
+local function findLocalItem(itemId)
+    local player = getPlayer()
+    if not player then return nil end
+    local item = TSPS.findItem(player, itemId)
+    if item then return item end
+    for i = 1, 3 do
+        local other = getSpecificPlayer(i)
+        if other and other:isLocalPlayer() then
+            item = TSPS.findItem(other, itemId)
+            if item then return item end
+        end
+    end
+    return nil
+end
+
+local function findEchoItem(itemId)
+    local item = findLocalItem(itemId)
+    if item then return item end
+    local player = getPlayer()
+    if player and TSPS.getSources then
+        item = TSPS.findItemInSources(TSPS.getSources(player), itemId)
+    end
+    return item
+end
+
+local function echoPlayerFor(item)
+    local player = getPlayer()
+    if item then
+        if player and TSPS.isInPlayerInventory(player, item) then return player end
+        for i = 1, 3 do
+            local other = getSpecificPlayer(i)
+            if other and other:isLocalPlayer() and TSPS.isInPlayerInventory(other, item) then
+                return other
+            end
+        end
+    end
+    return player
+end
+
 local function applyPaintEcho(player, item, args)
     local mix = TSPS.sanitizeMix(TSPS.mixFromString(args.mix))
     local r, g, b = TSPS.clampRGB(args.r, args.g, args.b)
@@ -53,6 +92,19 @@ if isClient() then
             return
         end
 
+        if command == "paintedNearby" or command == "unpaintedNearby" then
+            local item = findEchoItem(args.itemId)
+            if not item then return end
+            local player = echoPlayerFor(item)
+            if command == "paintedNearby" then
+                applyPaintEcho(player, item, args)
+            else
+                TSPS.clearPaint(item, player)
+                if args.idx ~= nil then item:setModelIndex(args.idx) end
+            end
+            return
+        end
+
         local player = getSpecificPlayer(args.playerNum or 0)
         TSPS.log("OnServerCommand player", tostring(player ~= nil),
             "playerNum", args.playerNum,
@@ -62,24 +114,6 @@ if isClient() then
         if command == "failed" then
             TSPS.log("OnServerCommand FAILED handler")
             HaloTextHelper.addBadText(player, getText("UI_TS_Paint_Failed"))
-            return
-        end
-
-        local item = TSPS.findItem(player, args.itemId)
-        if not item and TSPS.getSources then
-            item = TSPS.findItemInSources(TSPS.getSources(player), args.itemId)
-        end
-        TSPS.logItem("OnServerCommand item", item)
-        TSPS.log("OnServerCommand findItem", "itemId", args.itemId, "found", tostring(item ~= nil))
-        if not item then return end
-
-        if command == "painted" then
-            TSPS.log("OnServerCommand applying echo", "rgb", args.r, args.g, args.b)
-            applyPaintEcho(player, item, args)
-        elseif command == "unpainted" then
-            TSPS.log("OnServerCommand clearing echo")
-            TSPS.clearPaint(item, player)
-            if args.idx ~= nil then item:setModelIndex(args.idx) end
         end
     end)
 end

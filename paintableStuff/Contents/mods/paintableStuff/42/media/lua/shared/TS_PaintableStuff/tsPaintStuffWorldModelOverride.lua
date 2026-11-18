@@ -28,9 +28,14 @@ local function resolveWorldPainted(registration, item)
     return value
 end
 
+local validatedModels = {}
+
 local function worldModelExists(name)
+    if validatedModels[name] then return true end
     local manager = getScriptManager and getScriptManager()
-    return manager ~= nil and manager:getModelScript(name) ~= nil
+    local exists = manager ~= nil and manager:getModelScript(name) ~= nil
+    if exists then validatedModels[name] = true end
+    return exists
 end
 
 function TSPS.getWorldPaintedModel(item)
