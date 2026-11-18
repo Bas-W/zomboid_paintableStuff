@@ -1,5 +1,5 @@
 name=Paintable Stuff
-modversion=0.3.2
+modversion=0.3.3
 author=TeaStain
 id=tsPaintableStuff
 description=Framework which adds functionality to make items paintable.

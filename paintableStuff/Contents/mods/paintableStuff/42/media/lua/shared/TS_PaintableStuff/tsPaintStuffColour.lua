@@ -65,6 +65,11 @@ function Colour.mix(entries, sat, val)
         end
     end
 
+    -- values need to be capped to 0.99, rgb[1,1,1] disables tint
+    r = math.min(r / total, 0.99)
+    g = math.min(g / total, 0.99)
+    b = math.min(b / total, 0.99)
+
     if total == 0 then return 1, 1, 1 end
-    return Colour.adjust(r / total, g / total, b / total, sat, val)
+    return Colour.adjust(r, g, b, sat, val)
 end
