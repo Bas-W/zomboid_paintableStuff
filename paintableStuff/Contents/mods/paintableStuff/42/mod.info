@@ -1,8 +1,10 @@
 name=Paintable Stuff
-modversion=0.4.3
+modversion=1.0.0
 author=TeaStain
 id=tsPaintableStuff
 description=Framework which adds functionality to make items paintable.
 description=
 description= This mod does nothing on its own.
 category=features
+poster=poster.png
+icon=icon.png
