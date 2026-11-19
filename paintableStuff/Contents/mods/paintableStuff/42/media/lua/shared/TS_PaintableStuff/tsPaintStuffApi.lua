@@ -381,8 +381,9 @@ function TSPS.applyPaint(item, r, g, b, mix, index, player)
     item:setColor(Color.new(1, 1, 1, 1))
     item:setCustomColor(false)
     item:getModData().TS_Paint = { r = r, g = g, b = b, mix = mix, v = 1, idx = originalIdx }
-    if (isClient() or not isServer()) and TSPS.updateWorldModel then
-        TSPS.updateWorldModel(item)
+    if isClient() or not isServer() then
+        if TSPS.updateWorldModel then TSPS.updateWorldModel(item) end
+        if TSPS.invalidateWorldAtlas then TSPS.invalidateWorldAtlas(item) end
     end
     refreshItem(item, player)
     TSPS.logItem("applyPaint done", item)
@@ -404,8 +405,9 @@ function TSPS.clearPaint(item, player)
     item:setColor(Color.new(1, 1, 1, 1))
     item:setCustomColor(false)
     item:getModData().TS_Paint = nil
-    if (isClient() or not isServer()) and TSPS.updateWorldModel then
-        TSPS.updateWorldModel(item)
+    if isClient() or not isServer() then
+        if TSPS.updateWorldModel then TSPS.updateWorldModel(item) end
+        if TSPS.invalidateWorldAtlas then TSPS.invalidateWorldAtlas(item) end
     end
     refreshItem(item, player)
     TSPS.logItem("clearPaint done", item)
@@ -432,8 +434,19 @@ end
 
 -- Paint removal
 
-function TSPS.isPetrolSource(item)
+local function fluidContainerOf(item)
+    if not item then return nil end
     local fc = item:getFluidContainer()
+    if fc then return fc end
+    local worldItem = item.getWorldItem and item:getWorldItem() or nil
+    if worldItem and worldItem.getFluidContainer then
+        return worldItem:getFluidContainer()
+    end
+    return nil
+end
+
+function TSPS.isPetrolSource(item)
+    local fc = fluidContainerOf(item)
     return fc ~= nil and fc:contains(Fluid.Petrol) and fc:getAmount() >= TSPS.PETROL_PER_REMOVAL
 end
 
@@ -460,7 +473,21 @@ function TSPS.findCloth(sources, player)
 end
 
 function TSPS.consumePetrol(item)
-    local fc = item and item:getFluidContainer()
+    if not item then return false end
+
+    local worldItem = item.getWorldItem and item:getWorldItem() or nil
+    local worldFluid = worldItem and worldItem.getFluidContainer and worldItem:getFluidContainer() or nil
+    if worldFluid then
+        if worldItem.useFluid then
+            worldItem:useFluid(TSPS.PETROL_PER_REMOVAL)
+        else
+            worldFluid:adjustAmount(worldFluid:getAmount() - TSPS.PETROL_PER_REMOVAL)
+            if worldItem.sync then worldItem:sync() end
+        end
+        return true
+    end
+
+    local fc = item:getFluidContainer()
     if not fc then return false end
     fc:adjustAmount(fc:getAmount() - TSPS.PETROL_PER_REMOVAL)
     item:syncItemFields()
