@@ -56,6 +56,25 @@ After removing paint, the item's modelIndex will be reset to it's original state
 - opts.worldPainted: custom ground to apply to this item.  
 If not set, the default ground model will be used and vanilla items will ignore the tint mask when placed in the world.  
 The custom world models can be generated with [gen_world_models.py](./scripts/gen_world_models.py)
+- opts.worldPaintedBySprite: optional table mapping the item's current model (`item:getStaticModel()`) to a ground
+model. It is checked before `worldPainted`. Use it when another mod swaps the item's model, for example an
+empty-magazine variant:
+```lua
+TS_PaintStuff.registerPaintable("Base.AssaultRifle", {
+    worldPainted = "TS_AssaultRifleWorldPaint",
+    worldPaintedBySprite = {
+        PZRA_M16_NoMag = "TS_PZRA_M16_NoMagWorldPaint",
+    },
+})
+```
+
+If a variant model comes from another mod, generate its world model with `--extra-model-script` and `--extra-model`:
+```
+python3 scripts/gen_world_models.py Base.AssaultRifle \
+    --extra-model-script /path/to/OtherMod/scripts/other_models.txt \
+    --extra-model PZRA_M16_NoMag \
+    --out media/scripts/myWorldModels.txt
+```
 
 ### See my mods for examples:
 - [Paintable Stuff - Tools](https://github.com/Bas-W/zomboid_paintableStuff_tools)  

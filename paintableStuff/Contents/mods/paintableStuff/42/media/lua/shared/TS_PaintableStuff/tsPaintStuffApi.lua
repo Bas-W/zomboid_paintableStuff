@@ -20,6 +20,9 @@ require "BuildingObjects/ISPaintMenu"
 -- no world model override is applied for that item.
 -- It can be a model script name or a table keyed by model index (with an optional `default`).
 -- Generate these models with the python script at "scripts/gen_world_models.py".
+--
+-- The optional `worldPaintedBySprite` table maps the item's current static/weapon model
+-- (item:getStaticModel()) to a different painted ground model.
 
 TS_PaintStuff = TS_PaintStuff or {}
 local TSPS = TS_PaintStuff
@@ -86,6 +89,7 @@ function TSPS.registerPaintable(fullType, opts)
     TSPS.Paintables[fullType] = {
         index = index,
         worldPainted = opts and opts.worldPainted,
+        worldPaintedBySprite = opts and opts.worldPaintedBySprite,
     }
 end
 

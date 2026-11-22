@@ -20,8 +20,23 @@ local function isLocalRenderSide()
     return isClient() or not isServer()
 end
 
+local function currentStaticModel(item)
+    local ok, model = pcall(function() return item:getStaticModel() end)
+    if ok and model then return model end
+    return (item.getWeaponSprite and item:getWeaponSprite()) or nil
+end
+
 local function resolveWorldPainted(registration, item)
-    local value = registration and registration.worldPainted
+    if not registration then return nil end
+
+    local bySprite = registration.worldPaintedBySprite
+    if bySprite then
+        local sprite = currentStaticModel(item)
+        local spriteModel = sprite and bySprite[sprite]
+        if spriteModel then return spriteModel end
+    end
+
+    local value = registration.worldPainted
     if type(value) == "table" then
         return value[item:getModelIndex()] or value.default
     end

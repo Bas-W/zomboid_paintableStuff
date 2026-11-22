@@ -27,6 +27,15 @@ Examples:
         --out ../zomboid_paintableStuff_weapons/paintableStuff_weapons/Contents/mods/paintableStuffWeapons/42/media/scripts/tsPSWeaponsWorldModels.txt
 
 The output filename must be unique. If the same name is used in multiple mods, they will overwrite each other.
+
+For model variants supplied by another mod (for example Visible Magazine Reloads' empty-magazine
+models), pass its model script with --extra-model-script and the model names with --extra-model:
+
+    python3 scripts/gen_world_models.py Base.AssaultRifle ... \
+        --prefix TS_ \
+        --extra-model-script /path/to/PZMagReload/42/media/scripts/PZMagReload_models.txt \
+        --extra-model PZRA_M16_NoMag \
+        --mod-dir ... --out ...
 """
 
 from __future__ import annotations
@@ -227,32 +236,36 @@ class ItemInfo:
 
 
 class GameData:
-    def __init__(self, game_dir: Path) -> None:
+    def __init__(self, game_dir: Path, extra_model_scripts: list[Path] | None = None) -> None:
         self.game_dir = game_dir
         self.models: dict[str, ModelInfo] = {}
         self.items: dict[str, ItemInfo] = {}
         self._load_models()
+        for path in extra_model_scripts or []:
+            self._load_models_file(path)
         self._load_items()
 
     def _script_files(self, folder: str) -> list[Path]:
         base = self.game_dir / "media" / "scripts" / "generated" / folder
         return sorted(base.glob("*.txt"))
 
+    def _load_models_file(self, path: Path) -> None:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        modules = find_blocks(text, "module")
+        for module_block in modules:
+            for model_block in find_blocks(module_block.body, "model"):
+                if model_block.name in self.models:
+                    continue
+                self.models[model_block.name] = ModelInfo(
+                    model_block.name,
+                    module_block.name,
+                    textwrap.dedent(model_block.body).strip("\n"),
+                )
+
     def _load_models(self) -> None:
         for path in self._script_files(""):
-            if not path.name.startswith("models"):
-                continue
-            text = path.read_text(encoding="utf-8", errors="ignore")
-            modules = find_blocks(text, "module")
-            for module_block in modules:
-                for model_block in find_blocks(module_block.body, "model"):
-                    if model_block.name in self.models:
-                        continue
-                    self.models[model_block.name] = ModelInfo(
-                        model_block.name,
-                        module_block.name,
-                        textwrap.dedent(model_block.body).strip("\n"),
-                    )
+            if path.name.startswith("models"):
+                self._load_models_file(path)
 
     def _load_items(self) -> None:
         for path in self._script_files("items"):
@@ -376,6 +389,20 @@ def main() -> int:
         default="TS_",
         help="Generated model name prefix (default: TS_ for TeaStain; use your own, e.g. ABC_)",
     )
+    parser.add_argument(
+        "--extra-model-script",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="additional model script to read (repeatable), e.g. another mod's model file",
+    )
+    parser.add_argument(
+        "--extra-model",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="additional model name to generate a world-paint model for (repeatable)",
+    )
     args = parser.parse_args()
 
     if not re.fullmatch(r"[A-Za-z0-9_]*", args.prefix):
@@ -389,7 +416,12 @@ def main() -> int:
     if not (game_dir / "media" / "scripts" / "generated").is_dir():
         parser.error(f"not a Project Zomboid media root: {game_dir}")
 
-    game = GameData(game_dir)
+    extra_model_scripts = [Path(path).expanduser().resolve() for path in args.extra_model_script]
+    for path in extra_model_scripts:
+        if not path.is_file():
+            parser.error(f"extra model script not found: {path}")
+
+    game = GameData(game_dir, extra_model_scripts)
     modules: dict[str, list[str]] = {}
     seen_models: set[str] = set()
     failures = 0
@@ -397,7 +429,41 @@ def main() -> int:
     print(f"Game: {game_dir}", file=sys.stderr)
     if mod_dir:
         print(f"Mod:  {mod_dir}", file=sys.stderr)
+    for path in extra_model_scripts:
+        print(f"Extra model script: {path}", file=sys.stderr)
     print("", file=sys.stderr)
+
+    def generate_model(label: str, model_name: str) -> bool:
+        model = game.models.get(model_name)
+        if model is None:
+            print(f"ERROR {label}: model not found: {model_name}", file=sys.stderr)
+            return False
+
+        generated_name = f"{args.prefix}{model_name}WorldPaint"
+        if generated_name in seen_models:
+            return True
+        seen_models.add(generated_name)
+
+        body, warnings = compensate_world_attachment(model.body)
+        texture = model_texture(body)
+        has_mask = mask_exists(game_dir, mod_dir, texture)
+        module = args.module or model.module
+        modules.setdefault(module, []).append(
+            f"    model {generated_name}\n"
+            "    {\n"
+            + textwrap.indent(textwrap.dedent(body).strip("\n"), "        ")
+            + "\n    }"
+        )
+
+        status = "mask OK" if has_mask else "MISSING MASK"
+        print(
+            f"{label:24} {model_name:26} -> {generated_name:32} "
+            f"texture={texture:42} {status}",
+            file=sys.stderr,
+        )
+        for warning in warnings:
+            print(f"    warning: {warning}", file=sys.stderr)
+        return True
 
     for full_type in args.items:
         try:
@@ -417,36 +483,12 @@ def main() -> int:
             continue
 
         for model_name in item.models:
-            model = game.models.get(model_name)
-            if model is None:
-                print(f"ERROR {full_type}: model not found: {model_name}", file=sys.stderr)
+            if not generate_model(full_type, model_name):
                 failures += 1
-                continue
 
-            generated_name = f"{args.prefix}{model_name}WorldPaint"
-            if generated_name in seen_models:
-                continue
-            seen_models.add(generated_name)
-
-            body, warnings = compensate_world_attachment(model.body)
-            texture = model_texture(body)
-            has_mask = mask_exists(game_dir, mod_dir, texture)
-            module = args.module or model.module
-            modules.setdefault(module, []).append(
-                f"    model {generated_name}\n"
-                "    {\n"
-                + textwrap.indent(textwrap.dedent(body).strip("\n"), "        ")
-                + "\n    }"
-            )
-
-            status = "mask OK" if has_mask else "MISSING MASK"
-            print(
-                f"{full_type:24} {model_name:26} -> {generated_name:32} "
-                f"texture={texture:42} {status}",
-                file=sys.stderr,
-            )
-            for warning in warnings:
-                print(f"    warning: {warning}", file=sys.stderr)
+    for model_name in args.extra_model:
+        if not generate_model(f"extra:{model_name}", model_name):
+            failures += 1
 
     if failures:
         print(f"\n{failures} item(s) failed; output not written.", file=sys.stderr)

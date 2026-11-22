@@ -36,8 +36,8 @@ function TSPaintMixPanel:new(player, item, sources, worldItem)
     local previewY = sliderY + BTN_H * 2 + SLIDER_GAP + 2 * MARGIN
 
     local sliderLabelW = math.max(
-        getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Saturation")),
-        getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_Mix_Brightness")))
+        getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_PaintableStuff_Mix_Saturation")),
+        getTextManager():MeasureStringX(UIFont.Small, getText("UI_TS_PaintableStuff_Mix_Brightness")))
 
     local width = PANEL_W
     local height = previewY + PREVIEW_SIZE + PAD
@@ -100,8 +100,8 @@ function TSPaintMixPanel:createChildren()
     self.satSlider = createSlider(self, sliderX, self.sliderY)
     self.valSlider = createSlider(self, sliderX, self.sliderY + BTN_H + SLIDER_GAP)
 
-    self.satResetButton = ISButton:new(sliderResetButtonX, self.sliderY, BTN_W, BTN_H, getText("UI_TS_Slider_Reset"), self, (function() self.satSlider:setCurrentValue(100, true) end))
-    self.valResetButton = ISButton:new(sliderResetButtonX, self.sliderY + BTN_H + SLIDER_GAP, BTN_W, BTN_H, getText("UI_TS_Slider_Reset"), self, (function() self.valSlider:setCurrentValue(100, true) end))
+    self.satResetButton = ISButton:new(sliderResetButtonX, self.sliderY, BTN_W, BTN_H, getText("UI_TS_PaintableStuff_Slider_Reset"), self, (function() self.satSlider:setCurrentValue(100, true) end))
+    self.valResetButton = ISButton:new(sliderResetButtonX, self.sliderY + BTN_H + SLIDER_GAP, BTN_W, BTN_H, getText("UI_TS_PaintableStuff_Slider_Reset"), self, (function() self.valSlider:setCurrentValue(100, true) end))
 
     self.satResetButton:initialise()
     self.valResetButton:initialise()
@@ -110,11 +110,11 @@ function TSPaintMixPanel:createChildren()
 
     -- Confirm/cancel buttons
     local footerY = self.height - PAD - BTN_H
-    self.paintButton = ISButton:new(self.width - PAD - BTN_W * 2 - MARGIN, footerY, BTN_W, BTN_H, getText("UI_TS_Mix_Paint"), self, self.onPaint)
+    self.paintButton = ISButton:new(self.width - PAD - BTN_W * 2 - MARGIN, footerY, BTN_W, BTN_H, getText("UI_TS_PaintableStuff_Mix_Paint"), self, self.onPaint)
     self.paintButton:initialise()
     self:addChild(self.paintButton)
 
-    local cancelButton = ISButton:new(self.width - PAD - BTN_W, footerY, BTN_W, BTN_H, getText("UI_TS_Mix_Cancel"), self, self.onCancel)
+    local cancelButton = ISButton:new(self.width - PAD - BTN_W, footerY, BTN_W, BTN_H, getText("UI_TS_PaintableStuff_Mix_Cancel"), self, self.onCancel)
     cancelButton:initialise()
     self:addChild(cancelButton)
 
@@ -151,7 +151,7 @@ function TSPaintMixPanel:prerender()
     ISPanel.prerender(self)
 
     -- Header
-    self:drawText(getText("UI_TS_Mix_Title"), PAD, PAD * 0.35, 1, 1, 1, 1, UIFont.Medium)
+    self:drawText(getText("UI_TS_PaintableStuff_Mix_Title"), PAD, PAD * 0.35, 1, 1, 1, 1, UIFont.Medium)
 
     -- Paint selection
     local y = self.contentY
@@ -170,11 +170,11 @@ function TSPaintMixPanel:prerender()
     -- Saturation/Value slider text
     local valueX = PAD + self.sliderLabelW + SLIDER_W + 2 * MARGIN
     local satY = self.sliderY + (SLIDER_H - self.fontH) / 2
-    self:drawText(getText("UI_TS_Mix_Saturation"), PAD, satY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(getText("UI_TS_PaintableStuff_Mix_Saturation"), PAD, satY, 1, 1, 1, 1, UIFont.Small)
     self:drawText(string.format("%d%%", math.floor(self.satSlider:getCurrentValue())), valueX, satY, 1, 1, 1, 1, UIFont.Small)
 
     local valY = self.sliderY + BTN_H + SLIDER_GAP + (SLIDER_H - self.fontH) / 2
-    self:drawText(getText("UI_TS_Mix_Brightness"), PAD, valY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(getText("UI_TS_PaintableStuff_Mix_Brightness"), PAD, valY, 1, 1, 1, 1, UIFont.Small)
     self:drawText(string.format("%d%%", math.floor(self.valSlider:getCurrentValue())), valueX, valY, 1, 1, 1, 1, UIFont.Small)
 
     -- Colour preview
@@ -187,7 +187,7 @@ function TSPaintMixPanel:onPaint()
     local mix = self:getMix()
     local item = TSPS.resolveTarget(self.player, self.item, self.worldItem)
     if not item or not TSPS.canPaint(self.player, item, mix, self.sources) then
-        HaloTextHelper.addBadText(self.player, getText("UI_TS_Paint_Failed"))
+        HaloTextHelper.addBadText(self.player, getText("UI_TS_PaintableStuff_Paint_Failed"))
         return
     end
 

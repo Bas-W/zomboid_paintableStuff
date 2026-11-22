@@ -1,12 +1,12 @@
 {
-    "UI_TS_Mix_Title": "Mix paint",
-    "UI_TS_Mix_Saturation": "Saturation",
-    "UI_TS_Mix_Brightness": "Brightness",
-    "UI_TS_Mix_Paint": "Paint",
-    "UI_TS_Mix_Cancel": "Cancel",
-    "UI_TS_Paint_Failed": "Action failed",
-    "UI_TS_Slider_Reset": "Reset",
-    "UI_TS_ModOptions": "Paintable Stuff",
-    "UI_TS_WorldModelSwap": "Painted ground models",
-    "UI_TS_WorldModelSwap_Tooltip": "[Default: ON] Items placed in the world ignore this mod's paint mask,\n this option overrides the affected items' ground models to correct their appearance.\n This may cause compatiblity issues if another mod interacts with the ground models,\ndisabling this option may solve such issues.\nReloading the game is recommended after changing this option."
+    "UI_TS_PaintableStuff_Mix_Title": "Mix paint",
+    "UI_TS_PaintableStuff_Mix_Saturation": "Saturation",
+    "UI_TS_PaintableStuff_Mix_Brightness": "Brightness",
+    "UI_TS_PaintableStuff_Mix_Paint": "Paint",
+    "UI_TS_PaintableStuff_Mix_Cancel": "Cancel",
+    "UI_TS_PaintableStuff_Paint_Failed": "Action failed",
+    "UI_TS_PaintableStuff_Slider_Reset": "Reset",
+    "UI_TS_PaintableStuff_ModOptions": "Paintable Stuff",
+    "UI_TS_PaintableStuff_WorldModelSwap": "Painted ground models",
+    "UI_TS_PaintableStuff_WorldModelSwap_Tooltip": "[Default: ON] Items placed in the world ignore this mod's paint mask,\n this option overrides the affected items' ground models to correct their appearance.\n This may cause compatiblity issues if another mod interacts with the ground models,\ndisabling this option may solve such issues.\nReloading the game is recommended after changing this option."
 }

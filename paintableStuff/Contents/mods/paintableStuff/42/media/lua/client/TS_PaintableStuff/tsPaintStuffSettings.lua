@@ -16,12 +16,12 @@ if not ok or not PZAPI or not PZAPI.ModOptions then
     return
 end
 
-local options = PZAPI.ModOptions:create(MOD_ID, "UI_TS_ModOptions")
+local options = PZAPI.ModOptions:create(MOD_ID, "UI_TS_PaintableStuff_ModOptions")
 local tickbox = options:addTickBox(
     OPTION_ID,
-    "UI_TS_WorldModelSwap",
+    "UI_TS_PaintableStuff_WorldModelSwap",
     true,
-    "UI_TS_WorldModelSwap_Tooltip"
+    "UI_TS_PaintableStuff_WorldModelSwap_Tooltip"
 )
 
 TSPS.settings.worldModelSwap = tickbox.value == true

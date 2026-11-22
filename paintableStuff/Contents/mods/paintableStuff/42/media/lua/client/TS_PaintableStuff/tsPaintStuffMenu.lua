@@ -39,11 +39,11 @@ local function removePaint(player, item, sources, worldItem)
 end
 
 local function addApplyOption(player, paintMenu, item, paints, hasBrush, sources, worldItem)
-    local label = getText("ContextMenu_TS_Apply")
+    local label = getText("ContextMenu_TS_PaintableStuff_Apply")
     if not hasBrush then
-        label = getText("ContextMenu_TS_Apply_NeedsBrush")
+        label = getText("ContextMenu_TS_PaintableStuff_Apply_NeedsBrush")
     elseif #paints == 0 then
-        label = getText("ContextMenu_TS_Apply_NoPaint")
+        label = getText("ContextMenu_TS_PaintableStuff_Apply_NoPaint")
     end
 
     local option = paintMenu:addOption(label, nil, nil)
@@ -69,7 +69,7 @@ local function addApplyOption(player, paintMenu, item, paints, hasBrush, sources
         row.color.b = paint.entry.color[3]
     end
 
-    local mixOption = applyMenu:addOption(getText("ContextMenu_TS_CustomMix"), player, openMixer, item, sources, worldItem)
+    local mixOption = applyMenu:addOption(getText("ContextMenu_TS_PaintableStuff_CustomMix"), player, openMixer, item, sources, worldItem)
     if #paints < 2 then mixOption.notAvailable = true end
 end
 
@@ -78,13 +78,13 @@ local function addRemoveOption(player, paintMenu, item, sources, worldItem)
 
     local solvent = TSPS.findSolvent(sources, player)
     local cloth = TSPS.findCloth(sources, player)
-    local label = getText("ContextMenu_TS_RemovePaint")
+    local label = getText("ContextMenu_TS_PaintableStuff_RemovePaint")
     if not solvent and not cloth then
-        label = getText("ContextMenu_TS_RemovePaint_NeedsBoth")
+        label = getText("ContextMenu_TS_PaintableStuff_RemovePaint_NeedsBoth")
     elseif not solvent then
-        label = getText("ContextMenu_TS_RemovePaint_NeedsPetrol")
+        label = getText("ContextMenu_TS_PaintableStuff_RemovePaint_NeedsPetrol")
     elseif not cloth then
-        label = getText("ContextMenu_TS_RemovePaint_NeedsCloth")
+        label = getText("ContextMenu_TS_PaintableStuff_RemovePaint_NeedsCloth")
     end
 
     local option = paintMenu:addOption(label, player, removePaint, item, sources, worldItem)
@@ -100,7 +100,7 @@ local function onFillInventoryContextMenu(playerNum, context, items)
 
     local sources = TSPS.getSources(player)
 
-    local paintOption = context:addOption(getText("ContextMenu_TS_PaintMenu"), nil, nil)
+    local paintOption = context:addOption(getText("ContextMenu_TS_PaintableStuff_PaintMenu"), nil, nil)
     local paintMenu = ISContextMenu:getNew(context)
     context:addSubMenu(paintOption, paintMenu)
 
@@ -130,7 +130,7 @@ local function onFillWorldContextMenu(playerNum, context, worldObjects, test)
                 sources = sources or TSPS.getSources(player)
 
                 local paintOption = context:addOption(
-                    getText("ContextMenu_TS_PaintMenu") .. " " .. item:getName(),
+                    getText("ContextMenu_TS_PaintableStuff_PaintMenu") .. " " .. item:getName(),
                     nil,
                     nil)
                 local paintMenu = ISContextMenu:getNew(context)

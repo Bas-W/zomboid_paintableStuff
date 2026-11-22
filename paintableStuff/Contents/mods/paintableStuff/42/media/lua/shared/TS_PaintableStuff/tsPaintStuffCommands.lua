@@ -113,7 +113,7 @@ if isClient() then
 
         if command == "failed" then
             TSPS.log("OnServerCommand FAILED handler")
-            HaloTextHelper.addBadText(player, getText("UI_TS_Paint_Failed"))
+            HaloTextHelper.addBadText(player, getText("UI_TS_PaintableStuff_Paint_Failed"))
         end
     end)
 end

@@ -156,7 +156,7 @@ function TSPaintItemAction:start()
     self:setOverrideHandModels("PaintBrush", nil)
     self.sound = self.character:playSound("Painting")
     if self.item then
-        self.item:setJobType(getText("ContextMenu_TS_Painting"))
+        self.item:setJobType(getText("ContextMenu_TS_PaintableStuff_Painting"))
         self.item:setJobDelta(0)
     end
 end
@@ -257,7 +257,7 @@ function TSPaintRemoveAction:start()
     self:setOverrideHandModels(self.cloth, self.solvent)
     self.sound = self.character:playSound("CleanBloodScrub")
     if self.item then
-        self.item:setJobType(getText("ContextMenu_TS_RemovingPaint"))
+        self.item:setJobType(getText("ContextMenu_TS_PaintableStuff_RemovingPaint"))
         self.item:setJobDelta(0)
     end
 end
